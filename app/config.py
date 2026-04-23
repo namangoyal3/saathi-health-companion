@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     nvidia_model: str = "meta/llama-3.1-8b-instruct"
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
+    # OpenRouter (reliable OpenAI-compatible gateway)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "minimax/minimax-m2.5:free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
     # ElevenLabs (web chat voice)
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"   # Rachel — clear, calm

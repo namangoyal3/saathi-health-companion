@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.config import settings
-from app.llm.nvidia import nvidia_chat
+from app.llm.openrouter import openrouter_chat
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -51,7 +51,7 @@ async def chat_page() -> str:
 @router.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
     try:
-        text = await nvidia_chat(system=_SYSTEM, user=req.message, max_tokens=200)
+        text = await openrouter_chat(system=_SYSTEM, user=req.message, max_tokens=200)
     except Exception as exc:
         log.error("chat_llm_failed err=%s", exc)
         text = "I'm having a little trouble right now. Please try again in a moment. 🙏"
@@ -150,7 +150,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       </div>
     </div>
     <div class="pills">
-      <span class="pill">🧠 NVIDIA Llama 3.1</span>
+      <span class="pill">🧠 MiniMax M2.5</span>
       <span class="pill">🔊 ElevenLabs Voice</span>
       <span class="pill">🎙 Speak or Type</span>
     </div>
