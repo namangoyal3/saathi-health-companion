@@ -249,7 +249,7 @@ function stripMarkdown(text) {
     .replace(/^\s*[-*•]\s+/gm, '')      // bullet points
     .replace(/^\s*\d+\.\s+/gm, '')      // numbered lists
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [links](url)
-    .replace(/[\uD800-\uDFFF]|[☀-➿]/g, '')  // emojis / symbols
+    .replace(/[^\x00-퟿-�]/g, '')  // strip surrogates + emoji
     .replace(/\n{2,}/g, ' ')            // collapse blank lines
     .replace(/\n/g, ' ')                // single newlines → space
     .trim();
