@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,7 +8,17 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Database
+    # Railway's Postgres plugin injects DATABASE_URL as `postgresql://…`
+    # SQLAlchemy async requires the `postgresql+asyncpg://…` driver prefix.
+    # Normalize so either form works in .env or in Railway env.
     database_url: str = "postgresql+asyncpg://saath:saath@localhost:5432/saath"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _ensure_async_driver(cls, v: str) -> str:
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://") :]
+        return v
 
     # Redis / arq
     redis_url: str = "redis://localhost:6379/0"

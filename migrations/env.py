@@ -11,7 +11,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+from app.config import settings  # noqa: E402
 from app.db.models import Base  # noqa: E402
+
+# Override the hardcoded alembic.ini URL with whatever app.config resolved.
+# That picks up Railway's DATABASE_URL (normalized to +asyncpg) at runtime.
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 target_metadata = Base.metadata
 
