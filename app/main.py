@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Update
 
+from app.api.labs import router as labs_router
 from app.bot import db as bot_db
 from app.bot.application import build_application
 from app.bot.scheduler import schedule_all_on_startup
@@ -68,6 +69,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.include_router(labs_router)
 
 
 def _git_sha() -> str:

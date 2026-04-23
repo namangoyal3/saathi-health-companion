@@ -24,6 +24,11 @@ dependencies = [
     "apscheduler>=3.10",
     "pytz>=2024.1",
     "python-dateutil>=2.9",
+    "pymupdf>=1.27.2.2",
+    "pdfplumber>=0.11.9",
+    "boto3>=1.42.94",
+    "langfuse>=4.5.0",
+    "python-multipart>=0.0.26",
 ]
 
 [dependency-groups]

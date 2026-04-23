@@ -19,7 +19,7 @@ _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 def opus_call(
     *,
     system: str | list[dict[str, Any]],
-    user: str,
+    user: str | list[dict[str, Any]],
     effort: Literal["low", "medium", "high", "xhigh", "max"] = "high",
     tools: list[dict[str, Any]] | None = None,
     max_tokens: int = 4096,
