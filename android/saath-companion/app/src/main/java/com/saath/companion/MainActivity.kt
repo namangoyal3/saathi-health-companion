@@ -129,19 +129,36 @@ class MainActivity : ComponentActivity() {
             .putBoolean(SyncWorker.KEY_USE_MOCK_READER, prefs.getBoolean(KEY_USE_MOCK_READER, true))
             .build()
 
-        val req = PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
+        val networkConstraint = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val wm = WorkManager.getInstance(this)
+
+        // Periodic: one sync every 24h. Note: PeriodicWorkRequest does NOT
+        // fire immediately on enqueue — the first run lands at the end of
+        // the first period. That's why the immediate one-time below exists.
+        val periodic = PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
+            .setConstraints(networkConstraint)
             .setInputData(inputData)
             .build()
-        WorkManager.getInstance(this)
-            .enqueueUniquePeriodicWork(
-                "saath_daily_sync",
-                ExistingPeriodicWorkPolicy.UPDATE,
-                req,
-            )
+        wm.enqueueUniquePeriodicWork(
+            "saath_daily_sync",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            periodic,
+        )
+
+        // One-time: run now, so the user sees immediate feedback after
+        // tapping Finish. REPLACE policy — if the user re-runs onboarding
+        // we cancel any in-flight immediate job and queue a fresh one.
+        val immediate = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(networkConstraint)
+            .setInputData(inputData)
+            .build()
+        wm.enqueueUniqueWork(
+            "saath_initial_sync",
+            ExistingWorkPolicy.REPLACE,
+            immediate,
+        )
     }
 }
