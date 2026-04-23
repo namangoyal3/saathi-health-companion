@@ -7,7 +7,7 @@ okhttp = "4.12.0"
 kotlinx-serialization = "1.7.3"
 coroutines = "1.10.1"
 activity-compose = "1.9.3"
-health-connect = "1.1.0-rc03"
+health-connect = "1.1.0-alpha07"
 junit = "4.13.2"
 mockwebserver = "4.12.0"
 
