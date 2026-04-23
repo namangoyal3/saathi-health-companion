@@ -8,12 +8,13 @@ import uuid
 
 import asyncpg
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.config import settings
 from app.llm.chat import llm_chat
+from app.llm.groq_stt import transcribe
 
 LAKSHMI_SENIOR_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -107,6 +108,21 @@ async def chat(req: ChatRequest) -> ChatResponse:
 async def tts(req: ChatRequest) -> ChatResponse:
     audio_b64 = await _tts(req.message)
     return ChatResponse(text="", audio_b64=audio_b64)
+
+
+@router.post("/stt")
+async def stt(audio: UploadFile) -> dict[str, str]:
+    """Browser-agnostic speech-to-text. Record via MediaRecorder, POST here,
+    we forward to Groq Whisper. Works in every browser (unlike Chrome's
+    SpeechRecognition which depends on Google's servers being reachable).
+    Requires GROQ_API_KEY in .env."""
+    data = await audio.read()
+    if not data:
+        return {"text": "", "error": "empty audio"}
+    text = await transcribe(data, filename=audio.filename or "voice.webm")
+    if text is None:
+        return {"text": "", "error": "groq_unavailable"}
+    return {"text": text, "error": ""}
 
 
 async def _tts(text: str) -> str:
@@ -233,73 +249,92 @@ const micBtn  = document.getElementById('mic-btn');
 const hint    = document.getElementById('hint');
 
 let isRecording = false;
-let activeRec  = null;
 
 inp.addEventListener('keypress', e => { if (e.key === 'Enter') sendText(); });
 
-// ── Voice input setup ───────────────────────────────────────────────────────
-const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+// ── Voice input — browser-agnostic via MediaRecorder → /stt (Groq Whisper)
+// Works in Chrome/Edge/Brave/Arc/Firefox. No dependency on Google's speech servers.
 
-if (!SpeechRec) {
-  micBtn.title = 'Speech not supported — use Chrome or Edge';
-  micBtn.style.opacity = '.4';
-  micBtn.onclick = () => { hint.textContent = 'Use Chrome or Edge for voice input.'; };
-}
+let mediaRec       = null;
+let recordedChunks = [];
+let activeStream   = null;
 
-function toggleMic() {
-  if (!SpeechRec) return;
-  if (isRecording) {
-    if (activeRec) activeRec.stop();
+async function startMicRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    hint.textContent = 'Microphone not available in this browser.';
+    return;
+  }
+  try {
+    activeStream = await navigator.mediaDevices.getUserMedia({audio: true});
+  } catch(e) {
+    hint.textContent = 'Microphone permission denied. Allow mic access and try again.';
     return;
   }
 
-  // Fresh instance every time — required by many browsers after onend
-  const rec = new SpeechRec();
-  rec.continuous    = false;
-  rec.interimResults = true;
-  rec.lang          = navigator.language || 'en-US';
-  activeRec = rec;
+  recordedChunks = [];
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+  try {
+    mediaRec = mime ? new MediaRecorder(activeStream, {mimeType: mime}) : new MediaRecorder(activeStream);
+  } catch(e) {
+    hint.textContent = 'Could not start mic: ' + e.message;
+    stopStream();
+    return;
+  }
 
-  rec.onstart = () => {
-    isRecording = true;
-    micBtn.classList.add('recording');
-    micBtn.textContent = '⏹';
-    hint.textContent = 'Listening… speak now';
-  };
+  mediaRec.ondataavailable = e => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
 
-  rec.onresult = e => {
-    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
-    inp.value = transcript;
-    if (e.results[e.results.length - 1].isFinal) {
+  mediaRec.onstop = async () => {
+    stopStream();
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.textContent = '🎙';
+    if (!recordedChunks.length) { hint.textContent = ''; return; }
+
+    hint.textContent = 'Transcribing…';
+    const blob = new Blob(recordedChunks, {type: mediaRec.mimeType || 'audio/webm'});
+    const ext  = (mediaRec.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+    const form = new FormData();
+    form.append('audio', blob, 'voice.' + ext);
+
+    try {
+      const r = await fetch('/stt', {method: 'POST', body: form});
+      const d = await r.json();
+      if (d.error === 'groq_unavailable') {
+        hint.textContent = 'Voice transcription not configured on the server. Please type instead.';
+        return;
+      }
+      if (!d.text) { hint.textContent = 'Sorry, I did not catch that. Please try again.'; return; }
       hint.textContent = '';
-      stopMic();
+      inp.value = d.text;
       sendText();
+    } catch(e) {
+      hint.textContent = 'Could not reach the server. Please type instead.';
     }
   };
 
-  rec.onerror = err => {
-    const msgs = {
-      'not-allowed':  'Microphone permission denied. Allow mic access in your browser and try again.',
-      'no-speech':    'No speech detected. Please try again.',
-      'network':      'Network error. Check your connection.',
-      'audio-capture':'No microphone found.',
-    };
-    hint.textContent = msgs[err.error] || ('Mic error: ' + err.error);
-    stopMic();
-  };
-
-  rec.onend = () => stopMic();
-
-  try {
-    rec.start();
-  } catch(e) {
-    hint.textContent = 'Could not start mic: ' + e.message;
-  }
+  mediaRec.start();
+  isRecording = true;
+  micBtn.classList.add('recording');
+  micBtn.textContent = '⏹';
+  hint.textContent = 'Listening… tap again to stop';
 }
 
+function stopStream() {
+  if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
+  mediaRec = null;
+}
+
+function toggleMic() {
+  if (isRecording && mediaRec) { mediaRec.stop(); return; }
+  startMicRecording();
+}
+
+// stopMic is inlined into mediaRec.onstop above — kept as a no-op shim for
+// any legacy callers that may still exist elsewhere in the page.
 function stopMic() {
   isRecording = false;
-  activeRec   = null;
   micBtn.classList.remove('recording');
   micBtn.textContent = '🎙';
 }
