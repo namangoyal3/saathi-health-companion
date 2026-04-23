@@ -23,27 +23,56 @@ interface WearableReader {
 }
 
 /**
- * Fixture reader matching the backend's "dizziness_episode" scenario from
- * app/api/vitals_simulator.py — fires a HIGH/URGENT anomaly detection so
- * the end-to-end flow (including Telegram alert) can be verified with one
- * install-and-run.
+ * Fixture reader for demos and tests. Generates realistic-looking values
+ * that vary per date (deterministic, hash-based) so a 7-day backfill
+ * doesn't produce seven identical rows.
+ *
+ * The *current date* is calibrated to the backend's "dizziness_episode"
+ * scenario — HIGH/URGENT anomalies fire end-to-end (Telegram alert path
+ * exercised). Prior days are calmer so the anomaly trend line has shape.
  */
 class MockWearableReader : WearableReader {
+
     override suspend fun readDailySummary(
         seniorId: String,
         date: LocalDate,
-    ): WearableDailySummary = WearableDailySummary(
-        seniorId = seniorId,
-        date = date.toString(),
-        steps = 1600,
-        avgHeartRate = 112,
-        sleepMinutes = 270,
-        sleepEfficiencyPct = 64,
-        sleepScore = 48,
-        avgSpo2Pct = 88,
-        avgSkinTempC = 37.1,
-        hrvRmssd = 18,
-        stressScore = 78,
-        exerciseMinutes = 5,
-    )
+    ): WearableDailySummary {
+        val today = LocalDate.now()
+        val daysAgo = java.time.temporal.ChronoUnit.DAYS.between(date, today).toInt()
+
+        return if (daysAgo <= 0) {
+            // Today — dizziness_episode payload: triggers HIGH/URGENT detection
+            WearableDailySummary(
+                seniorId = seniorId,
+                date = date.toString(),
+                steps = 1600,
+                avgHeartRate = 112,
+                sleepMinutes = 270,
+                sleepEfficiencyPct = 64,
+                sleepScore = 48,
+                avgSpo2Pct = 88,
+                avgSkinTempC = 37.1,
+                hrvRmssd = 18,
+                stressScore = 78,
+                exerciseMinutes = 5,
+            )
+        } else {
+            // Prior days — calmer, deterministically varied by date hash
+            val jitter = (date.toEpochDay().toInt() * 31) and 0x7fffffff
+            WearableDailySummary(
+                seniorId = seniorId,
+                date = date.toString(),
+                steps = 5000 + (jitter % 5000),
+                avgHeartRate = 65 + (jitter % 20),
+                sleepMinutes = 360 + (jitter % 120),
+                sleepEfficiencyPct = 78 + (jitter % 15),
+                sleepScore = 70 + (jitter % 20),
+                avgSpo2Pct = 95 + (jitter % 5),
+                avgSkinTempC = 36.4 + ((jitter % 10).toDouble() / 10.0),
+                hrvRmssd = 35 + (jitter % 20),
+                stressScore = 30 + (jitter % 30),
+                exerciseMinutes = 15 + (jitter % 45),
+            )
+        }
+    }
 }

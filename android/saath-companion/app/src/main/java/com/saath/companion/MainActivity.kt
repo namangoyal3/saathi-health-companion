@@ -149,10 +149,12 @@ class MainActivity : ComponentActivity() {
     private fun scheduleDailySync(prefs: android.content.SharedPreferences) {
         val wm = WorkManager.getInstance(this)
 
-        // Periodic: one sync every 24h. PeriodicWorkRequest does NOT fire
+        // Periodic: every 15 minutes (Android's PeriodicWorkRequest minimum).
+        // Each run backfills today + last 6 days, so older rows stay correct
+        // while today refreshes near-live. PeriodicWorkRequest does NOT fire
         // immediately on enqueue — the first run lands at the end of the
         // first period. That's why the immediate one-time below exists.
-        val periodic = PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
+        val periodic = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(networkConstraint())
             .setInputData(buildInputData(prefs))
             .build()
