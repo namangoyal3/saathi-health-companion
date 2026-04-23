@@ -33,12 +33,15 @@ class Settings(BaseSettings):
     exotel_token: str = ""
     exotel_from_number: str = ""
 
-    # Twilio (Day 3)
-    twilio_account_sid: str = ""
-    twilio_auth_token: str = ""
-    twilio_from_number: str = ""
+    # FreeSWITCH ESL (replaces Twilio as second IVR provider)
+    fs_esl_host: str = ""
+    fs_esl_port: int = 8021
+    fs_esl_password: str = "change-me-esl"
+    fs_sip_gateway: str = "pstn"     # sofia profile gateway name in FS config
+    fs_caller_id: str = ""           # outbound CLI shown to senior
 
     # IVR (Day 3)
+    ivr_provider: str = "exotel"     # 'exotel' | 'freeswitch'
     app_base_url: str = "http://localhost:8080"
     exotel_webhook_secret: str = "change-me-ivr-webhook-secret"
     sarvam_api_key: str = ""

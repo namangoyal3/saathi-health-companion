@@ -29,6 +29,25 @@ services:
       timeout: 3s
       retries: 10
 
+  freeswitch:
+    image: drachtio/freeswitch:v1.10.9
+    ports:
+      - "8021:8021"          # ESL — Python app connects here
+      - "5060:5060/udp"      # SIP signalling
+      - "5060:5060/tcp"
+      - "16384-16484:16384-16484/udp"  # RTP media ports
+    volumes:
+      - ./freeswitch/conf/autoload_configs/event_socket.conf.xml:/etc/freeswitch/autoload_configs/event_socket.conf.xml:ro
+      - ./freeswitch/conf/sip_profiles/external/saath-gw.xml:/etc/freeswitch/sip_profiles/external/saath-gw.xml:ro
+    environment:
+      ESL_PASSWORD: ${FS_ESL_PASSWORD:-change-me-esl}
+    healthcheck:
+      test: ["CMD-SHELL", "fs_cli -p ${FS_ESL_PASSWORD:-change-me-esl} -x 'status' | grep -q UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
 volumes:
   pgdata:
   rdata:

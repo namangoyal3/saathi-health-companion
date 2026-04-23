@@ -21,8 +21,16 @@ async def place_ivr_call(
     language: str,
     attempt: int = 1,
 ) -> dict[str, object]:
-    """Place an Exotel outbound call for a given senior and flow."""
-    from app.ivr.exotel import place_outbound
+    """Place an outbound IVR call for a given senior and flow.
+
+    IVR_PROVIDER selects the backend:
+      'exotel'      (default) — cloud SIP, webhook-driven ExoML
+      'freeswitch'  — self-hosted FreeSWITCH, ESL-driven inline IVR
+    """
+    if settings.ivr_provider == "freeswitch":
+        from app.ivr.freeswitch import place_outbound
+    else:
+        from app.ivr.exotel import place_outbound
 
     call_id = uuid.uuid4()
     try:

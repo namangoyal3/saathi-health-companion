@@ -1,0 +1,21 @@
+<!--
+  SIP gateway for outbound PSTN calls (India).
+
+  Populate FS_SIP_GW_USERNAME / FS_SIP_GW_PASSWORD / FS_SIP_GW_REALM in .env.
+  Compatible with any SIP trunk: Telnyx, Vonage SIP, BSNL SIP, Exotel SIP, etc.
+
+  The gateway name here ("pstn") must match FS_SIP_GATEWAY in .env.
+-->
+<include>
+  <gateway name="pstn">
+    <param name="username" value="${FS_SIP_GW_USERNAME}"/>
+    <param name="password" value="${FS_SIP_GW_PASSWORD}"/>
+    <param name="realm"    value="${FS_SIP_GW_REALM}"/>
+    <param name="register" value="true"/>
+    <param name="caller-id-in-from" value="false"/>
+    <param name="context" value="public"/>
+    <param name="expire-seconds" value="600"/>
+    <param name="retry-seconds" value="30"/>
+    <param name="ping" value="25"/>
+  </gateway>
+</include>

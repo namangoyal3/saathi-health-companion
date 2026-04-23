@@ -129,35 +129,6 @@ async def exotel_webhook(request: Request) -> Response:
     return Response(content="<Response><Hangup/></Response>", media_type="application/xml")
 
 
-@router.post("/webhook/twilio")
-async def twilio_webhook(request: Request) -> Response:
-    """Handle Twilio call status webhooks. Same logic as Exotel but no HMAC for now."""
-    form = await request.form()
-    params: dict[str, Any] = dict(form)
-
-    call_sid = str(params.get("CallSid", ""))
-    call_status = str(params.get("CallStatus", "")).lower()
-    call_id_str = str(params.get("call_id", ""))
-
-    log.info("twilio_webhook call_sid=%s status=%s", call_sid, call_status)
-
-    call_id: uuid.UUID | None = None
-    if call_id_str:
-        with contextlib.suppress(ValueError):
-            call_id = uuid.UUID(call_id_str)
-
-    if call_id:
-        if call_status in ("ringing",):
-            await transition(call_id, "dialing")
-        elif call_status == "in-progress":
-            await transition(call_id, "in_progress")
-        elif call_status == "completed":
-            await transition(call_id, "resolved")
-        elif call_status in ("busy", "failed", "no-answer"):
-            await transition(call_id, "failed")
-
-    return Response(content="<Response/>", media_type="application/xml")
-
 
 async def _handle_flow_a_dtmf(
     call_id: uuid.UUID,

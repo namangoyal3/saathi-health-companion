@@ -1,0 +1,12 @@
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <param name="nat-map" value="false"/>
+    <!-- Bind on all interfaces so the Python app can reach ESL from outside Docker -->
+    <param name="listen-ip" value="0.0.0.0"/>
+    <param name="listen-port" value="8021"/>
+    <!-- Set FS_ESL_PASSWORD in .env; docker-compose passes it as ESL_PASSWORD env var.
+         The image start script substitutes this value at launch. -->
+    <param name="password" value="${ESL_PASSWORD}"/>
+    <param name="apply-inbound-acl" value="loopback.auto"/>
+  </settings>
+</configuration>
