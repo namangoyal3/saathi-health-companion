@@ -44,7 +44,9 @@ class SyncWorker(
             HealthConnectReader(applicationContext)
         }
 
-        val target = LocalDate.now().minusDays(1)
+        // Read today's running total so the user sees live step counts during
+        // demos. For production daily summaries flip back to .minusDays(1).
+        val target = LocalDate.now()
 
         val summary: WearableDailySummary = try {
             reader.readDailySummary(seniorId, target)

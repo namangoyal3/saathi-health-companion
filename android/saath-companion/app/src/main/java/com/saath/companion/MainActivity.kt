@@ -107,11 +107,15 @@ class MainActivity : ComponentActivity() {
                     onRequestPermissions = {
                         requestPermissions.launch(SaathHealthPermissions.READ_PERMISSIONS)
                     },
+                    onSyncNow = {
+                        // Trigger an immediate sync without leaving the screen.
+                        // Same reader-selection logic as Finish — use real
+                        // HealthConnectReader if perms granted, mock otherwise.
+                        val useMock = !grantedState.value
+                        prefs.edit().putBoolean(KEY_USE_MOCK_READER, useMock).apply()
+                        enqueueImmediateSync(prefs)
+                    },
                     onDone = {
-                        // Default to mock reader until HC permissions are granted
-                        // — means the app produces a signed POST on first run
-                        // even without a watch paired, so the backend pipeline
-                        // can be verified end-to-end.
                         val useMock = !grantedState.value
                         prefs.edit().putBoolean(KEY_USE_MOCK_READER, useMock).apply()
                         scheduleDailySync(prefs)
@@ -121,44 +125,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun scheduleDailySync(prefs: android.content.SharedPreferences) {
-        val inputData = Data.Builder()
+    private fun buildInputData(prefs: android.content.SharedPreferences): Data =
+        Data.Builder()
             .putString(SyncWorker.KEY_SENIOR_ID, prefs.getString(KEY_SENIOR_ID, "") ?: "")
             .putString(SyncWorker.KEY_SECRET, prefs.getString(KEY_SECRET, "") ?: "")
             .putString(SyncWorker.KEY_BACKEND_URL, prefs.getString(KEY_BACKEND_URL, "") ?: "")
             .putBoolean(SyncWorker.KEY_USE_MOCK_READER, prefs.getBoolean(KEY_USE_MOCK_READER, true))
             .build()
 
-        val networkConstraint = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    private fun networkConstraint(): Constraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
 
+    private fun enqueueImmediateSync(prefs: android.content.SharedPreferences) {
+        val req = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(networkConstraint())
+            .setInputData(buildInputData(prefs))
+            .build()
+        WorkManager.getInstance(this)
+            .enqueueUniqueWork("saath_initial_sync", ExistingWorkPolicy.REPLACE, req)
+    }
+
+    private fun scheduleDailySync(prefs: android.content.SharedPreferences) {
         val wm = WorkManager.getInstance(this)
 
-        // Periodic: one sync every 24h. Note: PeriodicWorkRequest does NOT
-        // fire immediately on enqueue — the first run lands at the end of
-        // the first period. That's why the immediate one-time below exists.
+        // Periodic: one sync every 24h. PeriodicWorkRequest does NOT fire
+        // immediately on enqueue — the first run lands at the end of the
+        // first period. That's why the immediate one-time below exists.
         val periodic = PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
-            .setConstraints(networkConstraint)
-            .setInputData(inputData)
+            .setConstraints(networkConstraint())
+            .setInputData(buildInputData(prefs))
             .build()
         wm.enqueueUniquePeriodicWork(
             "saath_daily_sync",
             ExistingPeriodicWorkPolicy.UPDATE,
             periodic,
         )
-
-        // One-time: run now, so the user sees immediate feedback after
-        // tapping Finish. REPLACE policy — if the user re-runs onboarding
-        // we cancel any in-flight immediate job and queue a fresh one.
-        val immediate = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(networkConstraint)
-            .setInputData(inputData)
-            .build()
-        wm.enqueueUniqueWork(
-            "saath_initial_sync",
-            ExistingWorkPolicy.REPLACE,
-            immediate,
-        )
+        enqueueImmediateSync(prefs)
     }
 }

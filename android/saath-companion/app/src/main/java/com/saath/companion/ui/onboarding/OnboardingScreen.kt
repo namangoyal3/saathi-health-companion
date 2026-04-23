@@ -86,7 +86,7 @@ fun PairScreen(
     }
 }
 
-// Step 3 — Health Connect permission grant + last-sync status
+// Step 3 — Health Connect permission grant + last-sync status + manual sync
 @Composable
 fun PermissionScreen(
     lastSyncedText: String,
@@ -94,6 +94,7 @@ fun PermissionScreen(
     healthConnectStatus: com.saath.companion.data.HealthConnectAvailability,
     onInstallHealthConnect: () -> Unit,
     onRequestPermissions: () -> Unit,
+    onSyncNow: () -> Unit,
     onDone: () -> Unit,
 ) {
     Column(
@@ -141,7 +142,16 @@ fun PermissionScreen(
 
         Spacer(Modifier.height(16.dp))
         Text(lastSyncedText, style = MaterialTheme.typography.labelMedium)
+
         Spacer(Modifier.height(24.dp))
+        // "Sync Now" manually triggers a OneTimeWork — useful when the user
+        // wants to see live data (today's steps) without waiting for the
+        // 24h periodic cycle.
+        Button(onClick = onSyncNow, modifier = Modifier.fillMaxWidth()) {
+            Text("Sync Now")
+        }
+
+        Spacer(Modifier.height(12.dp))
         TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
             Text("Finish")
         }
