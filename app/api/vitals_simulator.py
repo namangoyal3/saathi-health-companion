@@ -151,9 +151,12 @@ async def simulator_send(req: SimulatorRequest, request: Request) -> dict[str, A
     body_bytes = json.dumps(body).encode()
     signature = _sign(body_bytes)
 
-    # Hit our own app — use the incoming host so localhost + remote both work
-    base = str(request.base_url).rstrip("/")
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    # Hit our own app — use the incoming host so localhost + remote both work.
+    # Railway forwards as http but 301s to https, so follow_redirects is required.
+    # Also prefer X-Forwarded-Proto when set (Railway sets it) so we skip the hop.
+    forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    base = f"{forwarded_proto}://{request.url.netloc}"
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
         resp = await client.post(
             f"{base}/wearable/samsung/webhook",
             content=body_bytes,
