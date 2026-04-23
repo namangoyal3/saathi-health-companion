@@ -55,8 +55,13 @@ async def chat(req: ChatRequest) -> ChatResponse:
     except Exception as exc:
         log.error("chat_llm_failed err=%s", exc)
         text = "I'm having a little trouble right now. Please try again in a moment. 🙏"
-    audio_b64 = await _tts(text)
-    return ChatResponse(text=text, audio_b64=audio_b64)
+    return ChatResponse(text=text)
+
+
+@router.post("/tts")
+async def tts(req: ChatRequest) -> ChatResponse:
+    audio_b64 = await _tts(req.message)
+    return ChatResponse(text="", audio_b64=audio_b64)
 
 
 async def _tts(text: str) -> str:
@@ -233,6 +238,18 @@ function stopMic() {
 }
 
 // ── Text / API ──────────────────────────────────────────────────────────────
+let currentUtterance = null;
+
+function speakNow(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-IN';
+  u.rate = 0.92;
+  currentUtterance = u;
+  window.speechSynthesis.speak(u);
+}
+
 async function sendText() {
   const text = inp.value.trim();
   if (!text) return;
@@ -244,6 +261,7 @@ async function sendText() {
   const loading = addBubble('Thinking…', 'bot thinking');
 
   try {
+    // Step 1 — get LLM text (~1-2s), speak immediately with browser TTS
     const r = await fetch('/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -253,19 +271,33 @@ async function sendText() {
 
     loading.className = 'bub bot';
     loading.textContent = d.text;
+    speakNow(d.text);
 
-    if (d.audio_b64) {
-      const audio = new Audio('data:audio/mpeg;base64,' + d.audio_b64);
-      audio.play().catch(() => {});
-      const rb = document.createElement('button');
-      rb.className = 'replay-btn';
-      rb.innerHTML = '▶ Replay';
-      rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
-      loading.appendChild(document.createElement('br'));
-      loading.appendChild(rb);
-    } else {
-      hint.textContent = 'ⓘ Voice disabled — add ELEVENLABS_API_KEY to .env';
-    }
+    // Step 2 — fetch ElevenLabs audio in background for Replay button
+    const rb = document.createElement('button');
+    rb.className = 'replay-btn';
+    rb.innerHTML = '▶ Replay';
+    rb.disabled = true;
+    rb.style.opacity = '0.5';
+    loading.appendChild(document.createElement('br'));
+    loading.appendChild(rb);
+
+    fetch('/tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: d.text})
+    }).then(res => res.json()).then(t => {
+      if (t.audio_b64) {
+        const audio = new Audio('data:audio/mpeg;base64,' + t.audio_b64);
+        rb.disabled = false;
+        rb.style.opacity = '1';
+        rb.innerHTML = '▶ Replay';
+        rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
+      } else {
+        rb.remove();
+      }
+    }).catch(() => rb.remove());
+
   } catch(e) {
     loading.className = 'bub bot';
     loading.textContent = 'Something went wrong. Please try again.';
