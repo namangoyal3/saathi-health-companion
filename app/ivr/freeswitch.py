@@ -65,7 +65,9 @@ _PROMPTS: dict[str, dict[str, str]] = {
 class _ESL:
     """Asyncio-native FreeSWITCH Event Socket client.
 
-    Handles auth, bgapi, execute, and event dispatching via asyncio.StreamReader.
+    Uses a single reader loop started inside connect() so that command replies
+    and async events never race for the same StreamReader.  All commands after
+    connect() go through _send_and_wait() which dequeues the next reply.
     """
 
     def __init__(self, host: str, port: int, password: str) -> None:
@@ -75,16 +77,22 @@ class _ESL:
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._handlers: dict[str, list[Callable[..., Any]]] = {}
+        self._reply_q: asyncio.Queue[dict[str, str]] = asyncio.Queue()
         self._running = False
         self._bg_tasks: set[asyncio.Task[None]] = set()
 
     async def connect(self) -> None:
         self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
-        await self._read_packet()                          # auth/request
+        # Auth before the reader loop starts so there is no concurrent read.
+        await self._read_packet()                              # auth/request
         self._write(f"auth {self._password}\n\n")
         reply = await self._read_packet()
         if "+OK accepted" not in reply.get("Reply-Text", ""):
             raise ValueError("ESL authentication failed — check FS_ESL_PASSWORD")
+        # Start the single reader loop; all further I/O goes through _reply_q.
+        t: asyncio.Task[None] = asyncio.create_task(self._reader_loop())
+        self._bg_tasks.add(t)
+        t.add_done_callback(self._bg_tasks.discard)
 
     def _write(self, data: str) -> None:
         assert self._writer is not None
@@ -111,7 +119,6 @@ class _ESL:
             body_bytes = await self._reader.readexactly(int(length))
             body = body_bytes.decode(errors="replace")
             if headers.get("Content-Type") == "text/event-plain":
-                # Body is itself a set of key:value lines
                 event: dict[str, str] = {}
                 for line in body.splitlines():
                     if ":" in line:
@@ -123,16 +130,38 @@ class _ESL:
 
         return headers
 
-    async def subscribe(self, *event_names: str) -> None:
-        self._write(f"event plain {' '.join(event_names)}\n\n")
+    async def _reader_loop(self) -> None:
+        """Single reader: routes command/api replies to _reply_q, events to handlers."""
+        self._running = True
+        while self._running:
+            try:
+                packet = await self._read_packet()
+                ct = packet.get("Content-Type", "")
+                if ct in ("command/reply", "api/response"):
+                    await self._reply_q.put(packet)
+                elif ct == "text/event-plain":
+                    name = packet.get("Event-Name", "")
+                    for fn in self._handlers.get(name, []):
+                        t: asyncio.Task[None] = asyncio.create_task(fn(packet))
+                        self._bg_tasks.add(t)
+                        t.add_done_callback(self._bg_tasks.discard)
+                # text/disconnect-notice and others are intentionally dropped
+            except (asyncio.IncompleteReadError, ConnectionResetError):
+                break
+            except Exception as exc:
+                log.debug("esl_reader_loop_err %s", exc)
+
+    async def _send_and_wait(self, data: str, timeout: float = 10.0) -> dict[str, str]:
+        self._write(data)
         await self._flush()
-        await self._read_packet()   # command/reply ack
+        return await asyncio.wait_for(self._reply_q.get(), timeout=timeout)
+
+    async def subscribe(self, *event_names: str) -> None:
+        await self._send_and_wait(f"event plain {' '.join(event_names)}\n\n")
 
     async def bgapi(self, command: str) -> str:
         """Send a background API command; returns job UUID."""
-        self._write(f"bgapi {command}\n\n")
-        await self._flush()
-        reply = await self._read_packet()
+        reply = await self._send_and_wait(f"bgapi {command}\n\n")
         return reply.get("Job-UUID", "")
 
     async def execute(self, channel_uuid: str, app: str, arg: str = "") -> None:
@@ -143,34 +172,15 @@ class _ESL:
             f"execute-app-name: {app}\n"
             f"execute-app-arg: {arg}\n\n"
         )
-        self._write(msg)
-        await self._flush()
+        await self._send_and_wait(msg)
 
     async def api(self, command: str) -> str:
         """Send a synchronous API command."""
-        self._write(f"api {command}\n\n")
-        await self._flush()
-        reply = await self._read_packet()
+        reply = await self._send_and_wait(f"api {command}\n\n")
         return reply.get("Body", "")
 
     def on(self, event_name: str, handler: Callable[..., Any]) -> None:
         self._handlers.setdefault(event_name, []).append(handler)
-
-    async def run(self) -> None:
-        """Event dispatch loop — run as a background asyncio task."""
-        self._running = True
-        while self._running:
-            try:
-                packet = await self._read_packet()
-                name = packet.get("Event-Name", "")
-                for fn in self._handlers.get(name, []):
-                    t: asyncio.Task[None] = asyncio.create_task(fn(packet))
-                    self._bg_tasks.add(t)
-                    t.add_done_callback(self._bg_tasks.discard)
-            except (asyncio.IncompleteReadError, ConnectionResetError):
-                break
-            except Exception as exc:
-                log.debug("esl_event_loop_err %s", exc)
 
     def close(self) -> None:
         self._running = False
@@ -261,11 +271,10 @@ async def _drive_call(
         esl.on("DTMF", on_dtmf)
         esl.on("CHANNEL_EXECUTE_COMPLETE", on_execute_complete)
 
+        # Reader loop already started inside connect(); just subscribe to events.
         await esl.subscribe(
             "CHANNEL_ANSWER", "CHANNEL_HANGUP", "DTMF", "CHANNEL_EXECUTE_COMPLETE"
         )
-        _fire_and_forget(esl.run())
-        await asyncio.sleep(0)  # yield to let event loop task start
 
         # Originate
         gw = settings.fs_sip_gateway or "default"
