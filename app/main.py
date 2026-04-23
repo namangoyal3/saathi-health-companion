@@ -18,6 +18,7 @@ from app.api.admin import router as admin_router
 from app.api.chat import router as chat_router
 from app.api.ivr import router as ivr_router
 from app.api.labs import router as labs_router
+from app.api.priya_chat import router as priya_chat_router
 from app.api.vitals_simulator import router as vitals_simulator_router
 from app.api.wearable import router as wearable_router
 from app.bot import db as bot_db
@@ -80,6 +81,7 @@ app.include_router(labs_router)
 app.include_router(ivr_router)
 app.include_router(wearable_router)
 app.include_router(vitals_simulator_router)
+app.include_router(priya_chat_router)
 app.include_router(admin_router)
 
 
