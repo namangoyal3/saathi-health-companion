@@ -309,9 +309,9 @@ function stripMarkdown(text) {
     .replace(/^\\s*[-*•]\\s+/gm, '')      // bullet points
     .replace(/^\\s*\\d+\\.\\s+/gm, '')      // numbered lists
     .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1') // [links](url)
-    .replace(/[^\x00-퟿-�]/g, '')  // strip surrogates + emoji
-    .replace(/\n{2,}/g, ' ')            // collapse blank lines
-    .replace(/\n/g, ' ')                // single newlines → space
+    .replace(/\\p{Extended_Pictographic}/gu, '')  // strip all emoji (keeps Hindi/Tamil)
+    .replace(/\\n{2,}/g, ' ')           // collapse blank lines
+    .replace(/\\n/g, ' ')               // single newlines → space
     .trim();
 }
 
