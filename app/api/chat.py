@@ -51,7 +51,7 @@ async def chat_page() -> str:
 @router.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
     try:
-        text = await openrouter_chat(system=_SYSTEM, user=req.message, max_tokens=200)
+        text = await openrouter_chat(system=_SYSTEM, user=req.message, max_tokens=120)
     except Exception as exc:
         log.error("chat_llm_failed err=%s", exc)
         text = "I'm having a little trouble right now. Please try again in a moment. 🙏"
@@ -150,7 +150,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       </div>
     </div>
     <div class="pills">
-      <span class="pill">🧠 MiniMax M2.5</span>
+      <span class="pill">🧠 Ling 2.6 Flash</span>
       <span class="pill">🔊 ElevenLabs Voice</span>
       <span class="pill">🎙 Speak or Type</span>
     </div>
