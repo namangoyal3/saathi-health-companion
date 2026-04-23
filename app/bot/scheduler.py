@@ -204,20 +204,36 @@ async def _send_summary_for_profile(app: Application, profile: dict[str, Any]) -
     taken = sum(1 for e in events if e.get("event") == "taken")
     skipped = sum(1 for e in events if e.get("event") == "skipped")
     missed = max(expected_doses - taken - skipped, 0)
+    streak = await db.get_adherence_streak(chat_id)
 
     header = get_string("daily_summary_header", lang, date=date.today().isoformat())
-    body = "\n".join(
-        [
-            get_string("daily_summary_taken", lang, count=taken),
-            get_string("daily_summary_skipped", lang, count=skipped),
-            get_string("daily_summary_missed", lang, count=missed),
-        ]
-    )
+    body_lines = [
+        get_string("daily_summary_taken", lang, count=taken),
+        get_string("daily_summary_skipped", lang, count=skipped),
+        get_string("daily_summary_missed", lang, count=missed),
+    ]
+    if streak >= 2:
+        body_lines.append(get_string("streak_line", lang, streak=streak))
+    text = f"{header}\n" + "\n".join(body_lines)
+
     try:
         await app.bot.send_message(
-            chat_id=chat_id,
-            text=f"{header}\n{body}",
-            parse_mode=ParseMode.MARKDOWN,
+            chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN
         )
     except Exception as exc:
         logger.warning("daily summary send failed for %s: %s", chat_id, exc)
+
+    # Forward to guardian if linked
+    family_chat_id = profile.get("family_chat_id")
+    if family_chat_id:
+        name = str(profile.get("name") or "")
+        try:
+            await app.bot.send_message(
+                chat_id=int(family_chat_id),
+                text=f"📋 *{name}* — daily summary ({date.today().isoformat()})\n"
+                f"✅ Taken: {taken} · ❌ Skipped: {skipped} · ⚠️ Missed: {missed}\n"
+                f"🔥 Streak: {streak} days",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except Exception as exc:
+            logger.warning("guardian daily forward failed for %s: %s", family_chat_id, exc)

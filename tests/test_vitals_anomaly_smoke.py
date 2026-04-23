@@ -13,7 +13,6 @@ import datetime
 import json
 import uuid
 from pathlib import Path
-from typing import Any
 
 import asyncpg
 import pytest

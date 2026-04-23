@@ -1,4 +1,4 @@
-"""AI voice agent for Telegram — OpenRouter LLM + ElevenLabs voice note."""
+"""AI voice agent for Telegram — NVIDIA Nemotron (+ OpenRouter fallback) + ElevenLabs + Groq STT + memory."""
 
 from __future__ import annotations
 
@@ -6,15 +6,25 @@ import asyncio
 import io
 import logging
 import re
-import subprocess
 
+import asyncpg
 import httpx
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from app.bot import db
 from app.config import settings
-from app.llm.openrouter import openrouter_chat
+from app.llm.chat import llm_chat
+from app.llm.groq_stt import transcribe
+
+# Strong refs to background tasks so the event loop doesn't GC them mid-flight.
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
+def _spawn_background(coro: asyncio.Future[None] | object) -> None:
+    task = asyncio.create_task(coro)  # type: ignore[arg-type]
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 log = logging.getLogger(__name__)
 
@@ -86,6 +96,112 @@ async def _fetch_voice(text: str) -> bytes | None:
     return None
 
 
+async def _recent_vitals_context(chat_id: int) -> str:
+    """Fetch the last 3 vitals anomalies for this chat_id's linked senior.
+
+    Returns empty string when no senior is linked or no anomalies exist.
+    Joins bot_profile.chat_id → app_user.telegram_chat_id to resolve the
+    senior UUID, then reads vitals_anomaly.
+    """
+    try:
+        conn: asyncpg.Connection = await asyncpg.connect(
+            dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        )
+    except Exception as exc:
+        log.debug("vitals_context_db_connect_failed err=%s", exc)
+        return ""
+    try:
+        rows = await conn.fetch(
+            """SELECT va.marker, va.severity, va.value, va.threshold,
+                      va.narrative, va.summary_date
+               FROM vitals_anomaly va
+               JOIN app_user u ON u.id = va.senior_id
+               WHERE u.telegram_chat_id = $1
+               ORDER BY va.created_at DESC
+               LIMIT 3""",
+            str(chat_id),
+        )
+    except Exception as exc:
+        log.debug("vitals_context_query_failed err=%s", exc)
+        return ""
+    finally:
+        await conn.close()
+
+    if not rows:
+        return ""
+
+    lines = [
+        f"- {r['summary_date']} · {r['severity']} · {r['narrative']}"
+        for r in rows
+    ]
+    return "RECENT SMARTWATCH FLAGS (last 3, most recent first):\n" + "\n".join(lines)
+
+
+async def _build_system(chat_id: int) -> str:
+    """Compose the system prompt with profile + meds + recent vitals flags."""
+    system = _SYSTEM
+    profile = await db.get_profile(chat_id)
+    if not profile:
+        return system
+
+    name = profile.get("name", "")
+    conditions = ", ".join(str(c) for c in (profile.get("conditions") or []))
+    meds = await db.get_medications(chat_id)
+    med_list = (
+        ", ".join(f"{m['drug_name']} {m.get('dose') or ''}".strip() for m in meds)
+        if meds
+        else "not specified"
+    )
+    vitals_block = await _recent_vitals_context(chat_id)
+
+    header = (
+        f"You are Saath, a warm AI health companion.\n"
+        f"You are speaking with {name}.\n"
+        f"Their conditions: {conditions or 'not specified'}.\n"
+        f"Their medications: {med_list}.\n"
+    )
+    if vitals_block:
+        header += (
+            f"\n{vitals_block}\n"
+            "If the user mentions how they feel, acknowledge these recent flags naturally "
+            "without alarming them; stay within the STRICT OUTPUT RULES below.\n"
+        )
+    header += "\n"
+
+    return header + _SYSTEM[_SYSTEM.index("STRICT OUTPUT RULES") :]
+
+
+async def _generate_reply(chat_id: int, user_text: str) -> str:
+    """LLM call with conversational memory. Memory is appended after the reply lands."""
+    system = await _build_system(chat_id)
+    history = await db.get_conv(chat_id, limit=10)
+    try:
+        reply = await llm_chat(
+            system=system, user=user_text, history=history, max_tokens=160
+        )
+    except Exception as exc:
+        log.error("ai_message_llm_failed err=%s", exc)
+        reply = "I'm having a little trouble right now. Please try again in a moment."
+    reply = _strip_markdown(reply)
+
+    try:
+        await db.append_conv(chat_id, "user", user_text)
+        await db.append_conv(chat_id, "assistant", reply)
+    except Exception as exc:
+        log.warning("conv_memory_persist_failed err=%s", exc)
+    return reply
+
+
+async def _send_voice_async(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str) -> None:
+    try:
+        await context.bot.send_chat_action(chat_id=chat_id, action="record_voice")
+        ogg = await _fetch_voice(text)
+        if ogg:
+            await context.bot.send_voice(chat_id=chat_id, voice=io.BytesIO(ogg))
+    except Exception as exc:
+        log.warning("send_voice_failed err=%s", exc)
+
+
 async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle any text message with LLM response + ElevenLabs voice note."""
     if not update.message:
@@ -98,59 +214,55 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
 
-    # Build a personalised system prompt if the user has a profile
-    system = _SYSTEM
-    profile = await db.get_profile(chat_id)
-    if profile:
-        name = profile.get("name", "")
-        conditions = ", ".join(str(c) for c in (profile.get("conditions") or []))
-        meds = await db.get_medications(chat_id)
-        med_list = ", ".join(
-            f"{m['drug_name']} {m.get('dose') or ''}".strip() for m in meds
-        ) if meds else "not specified"
-        system = (
-            f"You are Saath, a warm AI health companion.\n"
-            f"You are speaking with {name}.\n"
-            f"Their conditions: {conditions or 'not specified'}.\n"
-            f"Their medications: {med_list}.\n\n"
-        ) + _SYSTEM[_SYSTEM.index("STRICT OUTPUT RULES"):]
+    reply = await _generate_reply(chat_id, user_text)
 
-    try:
-        reply = await openrouter_chat(system=system, user=user_text, max_tokens=120)
-        reply = _strip_markdown(reply)
-    except Exception as exc:
-        log.error("ai_message_llm_failed err=%s", exc)
-        reply = "I'm having a little trouble right now. Please try again in a moment."
-
-    # Send text immediately
+    # Send text immediately, then voice note asynchronously
     await update.message.reply_text(reply)
+    _spawn_background(_send_voice_async(context, chat_id, reply))
 
-    # Send voice note asynchronously so text isn't delayed
-    async def _send_voice() -> None:
-        try:
-            await context.bot.send_chat_action(chat_id=chat_id, action="record_voice")
-            ogg = await _fetch_voice(reply)
-            if ogg:
-                await context.bot.send_voice(
-                    chat_id=chat_id,
-                    voice=io.BytesIO(ogg),
-                )
-        except Exception as exc:
-            log.warning("send_voice_failed err=%s", exc)
 
-    asyncio.create_task(_send_voice())
+async def _download_voice(context: ContextTypes.DEFAULT_TYPE, file_id: str) -> bytes | None:
+    try:
+        tg_file = await context.bot.get_file(file_id)
+        buf = io.BytesIO()
+        await tg_file.download_to_memory(out=buf)
+        return buf.getvalue()
+    except Exception as exc:
+        log.warning("voice_download_failed err=%s", exc)
+        return None
 
 
 async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """User sent a voice message — ask them to type for now."""
+    """User sent a voice note — transcribe via Groq Whisper, then run the AI turn."""
     if not update.message:
         return
     chat_id = update.effective_chat.id  # type: ignore[union-attr]
-    profile = await db.get_profile(chat_id)
-    lang = str((profile or {}).get("language") or "en")
-    msg = (
-        "Please type your message — I can read Hindi or English."
-        if lang != "hi"
-        else "कृपया अपना संदेश टाइप करें — मैं हिंदी और अंग्रेजी पढ़ सकती हूं।"
-    )
-    await update.message.reply_text(msg)
+    voice = update.message.voice or update.message.audio
+    if voice is None:
+        return
+
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+
+    audio = await _download_voice(context, voice.file_id)
+    if audio is None:
+        await update.message.reply_text("Sorry, I couldn't fetch your voice message. Please try again.")
+        return
+
+    transcript = await transcribe(audio, filename="voice.ogg")
+    if not transcript:
+        profile = await db.get_profile(chat_id)
+        lang = str((profile or {}).get("language") or "en")
+        msg = (
+            "I couldn't hear that clearly — please type your message."
+            if lang != "hi"
+            else "मैं आपकी आवाज़ साफ़ नहीं सुन पाई — कृपया टाइप करें।"
+        )
+        await update.message.reply_text(msg)
+        return
+
+    # Quote-reply with the transcription so the user knows what we heard
+    await update.message.reply_text(f"🎙 _{transcript}_", parse_mode="Markdown")
+
+    reply = await _generate_reply(chat_id, transcript)
+    await update.message.reply_text(reply)
+    _spawn_background(_send_voice_async(context, chat_id, reply))

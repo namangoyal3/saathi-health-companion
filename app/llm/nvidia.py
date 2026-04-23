@@ -23,22 +23,28 @@ _HEADERS = {
 async def nvidia_chat(
     *,
     system: str,
-    user: str,
+    user: str | None = None,
+    history: list[dict[str, str]] | None = None,
     max_tokens: int = 512,
     temperature: float = 0.2,
     retries: int = 3,
 ) -> str:
-    """Call NVIDIA NIM chat completions. Returns the assistant message text."""
+    """Call NVIDIA NIM chat completions. If `history` is provided, it is
+    interleaved between the system prompt and the current `user` turn.
+    """
     key = settings.nvidia_api_key
     if not key or key.startswith("change-me"):
         raise ValueError("NVIDIA_API_KEY not configured")
 
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    if history:
+        messages.extend(history)
+    if user is not None:
+        messages.append({"role": "user", "content": user})
+
     payload = {
         "model": settings.nvidia_model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
@@ -58,7 +64,14 @@ async def nvidia_chat(
                 resp.raise_for_status()
 
             data = resp.json()
-            return str(data["choices"][0]["message"]["content"])
+            choices = data.get("choices") or []
+            if not choices:
+                raise RuntimeError("nvidia returned empty choices")
+            content = (choices[0].get("message") or {}).get("content") or ""
+            text = str(content).strip()
+            if not text:
+                raise RuntimeError("nvidia returned empty content")
+            return text
 
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TimeoutException) as exc:
             last_exc = exc

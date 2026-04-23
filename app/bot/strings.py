@@ -63,6 +63,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "timing_label_evening": "शाम",
         "timing_label_night": "रात",
         "reset_done": "सारी जानकारी मिटा दी गई। /start दबाकर फिर शुरू करें।",
+        "link_code_issued": (
+            "यह कोड अपने बेटे/बेटी को भेजें 🔗\n\n"
+            "*{code}*\n\n"
+            "उन्हें Saath bot पर `/link_senior {code}` टाइप करने को कहें।\n"
+            "कोड 30 मिनट में खत्म हो जाएगा।"
+        ),
+        "link_senior_usage": "कृपया कोड के साथ इस्तेमाल करें: `/link_senior ABC123`",
+        "link_success_senior": "आपके परिवार से जुड़ गए 💚\nज़रूरी सूचनाएँ उन्हें भी मिलेंगी।",
+        "link_success_guardian": "✅ {name} के साथ जुड़ गए। अब रोज़ हाल-चाल मिलेगा।\n/report — अभी देखें",
+        "link_invalid": "❌ कोड गलत या पुराना है। नया कोड मांगें।",
+        "report_no_link": "आप अभी तक किसी से जुड़े नहीं हैं। उनसे /link_guardian चलाने को कहें।",
+        "report_header": "📋 *{name}* — आज का हाल ({date})",
+        "report_body": (
+            "💊 दवाइयाँ: ✅ {taken} ली · ❌ {skipped} छोड़ी · ⚠️ {missed} छूटीं\n"
+            "🔥 सिलसिला: {streak} दिन\n"
+            "{vitals_line}"
+        ),
+        "streak_line": "🔥 *{streak}-दिन का सिलसिला!* शानदार काम।",
     },
     "ta": {
         "welcome": ("வணக்கம்! 🙏\nநான் *Saath* — உங்கள் மருந்து நண்பன்.\nஉங்கள் மொழியை தேர்ந்தெடுக்கவும்:"),
@@ -128,6 +146,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "timing_label_evening": "மாலை",
         "timing_label_night": "இரவு",
         "reset_done": "அனைத்து தகவலும் நீக்கப்பட்டது. /start அழுத்தி மீண்டும் தொடங்கவும்.",
+        "link_code_issued": (
+            "இந்த குறியீட்டை உங்கள் பிள்ளைக்கு அனுப்பவும் 🔗\n\n"
+            "*{code}*\n\n"
+            "அவர் Saath bot-இல் `/link_senior {code}` என்று தட்டச்சு செய்ய வேண்டும்.\n"
+            "குறியீடு 30 நிமிடங்களில் காலாவதியாகும்."
+        ),
+        "link_senior_usage": "குறியீட்டுடன் பயன்படுத்தவும்: `/link_senior ABC123`",
+        "link_success_senior": "உங்கள் குடும்பத்துடன் இணைக்கப்பட்டது 💚",
+        "link_success_guardian": "✅ {name}-உடன் இணைக்கப்பட்டீர்கள். /report — பார்க்க",
+        "link_invalid": "❌ குறியீடு தவறானது அல்லது காலாவதியானது.",
+        "report_no_link": "நீங்கள் இன்னும் இணைக்கப்படவில்லை.",
+        "report_header": "📋 *{name}* — இன்றைய நிலை ({date})",
+        "report_body": (
+            "💊 மருந்துகள்: ✅ {taken} · ❌ {skipped} · ⚠️ {missed}\n"
+            "🔥 வரிசை: {streak} நாட்கள்\n"
+            "{vitals_line}"
+        ),
+        "streak_line": "🔥 *{streak}-நாள் வரிசை!* அருமை.",
     },
     "en": {
         "welcome": (
@@ -194,6 +230,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "timing_label_evening": "evening",
         "timing_label_night": "night",
         "reset_done": "All data cleared. Tap /start to begin again.",
+        "link_code_issued": (
+            "Share this code with your family member 🔗\n\n"
+            "*{code}*\n\n"
+            "Ask them to type `/link_senior {code}` on Saath bot.\n"
+            "The code expires in 30 minutes."
+        ),
+        "link_senior_usage": "Please use with a code: `/link_senior ABC123`",
+        "link_success_senior": "You're linked with your family 💚\nThey'll get important updates too.",
+        "link_success_guardian": "✅ Linked with {name}. Daily updates incoming.\n/report — view now",
+        "link_invalid": "❌ Invalid or expired code. Ask for a fresh one.",
+        "report_no_link": "You're not linked yet. Ask them to run /link_guardian first.",
+        "report_header": "📋 *{name}* — today's snapshot ({date})",
+        "report_body": (
+            "💊 Meds: ✅ {taken} taken · ❌ {skipped} skipped · ⚠️ {missed} missed\n"
+            "🔥 Streak: {streak} days\n"
+            "{vitals_line}"
+        ),
+        "streak_line": "🔥 *{streak}-day streak!* Great work.",
     },
 }
 

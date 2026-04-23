@@ -17,6 +17,8 @@ from telegram.ext import (
 
 from app.bot import db
 from app.bot.callbacks import callback_handlers
+from app.bot.guardian import guardian_handlers
+from app.bot.lab_intake import handle_lab_document
 from app.bot.onboarding import build_conversation_handler
 from app.bot.scheduler import unschedule_chat
 from app.bot.strings import get_string
@@ -96,24 +98,36 @@ async def unknown_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 # ---------- builder ----------
 
 
-def build_application(token: str) -> Application:  # type: ignore[type-arg]
-    app: Application = (  # type: ignore[type-arg]
+def build_application(token: str, *, with_updater: bool = False) -> Application:  # type: ignore[type-arg]
+    """Build the PTB Application.
+
+    with_updater=False (default): webhook mode — FastAPI drives update delivery via
+    POST /telegram/{token}. PTB's Updater is disabled.
+    with_updater=True: polling mode — run_polling() pulls updates itself. Use from
+    scripts/run_polling.py for local dev.
+    """
+    builder = (
         Application.builder()
         .token(token)
-        .updater(None)
         .connect_timeout(30.0)
         .read_timeout(30.0)
         .write_timeout(30.0)
         .pool_timeout(30.0)
-        .build()
     )
+    if not with_updater:
+        builder = builder.updater(None)
+
+    app: Application = builder.build()  # type: ignore[type-arg]
 
     app.add_handler(build_conversation_handler())
     for h in callback_handlers():
         app.add_handler(h)
+    for h in guardian_handlers():
+        app.add_handler(h)
     app.add_handler(CommandHandler("status", status_cmd))
     if os.getenv("DEBUG", "false").lower() == "true":
         app.add_handler(CommandHandler("reset", reset_cmd))
+    app.add_handler(MessageHandler(filters.Document.PDF, handle_lab_document))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_message))
 

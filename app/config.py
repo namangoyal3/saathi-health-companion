@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     # NVIDIA NIM (OpenAI-compatible, free tier)
     nvidia_api_key: str = ""
-    nvidia_model: str = "meta/llama-3.1-8b-instruct"
+    nvidia_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1"
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
     # OpenRouter (reliable OpenAI-compatible gateway)
@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     # ElevenLabs (web chat voice)
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"   # Rachel — clear, calm
+
+    # Groq (free Whisper v3 for Telegram voice STT)
+    groq_api_key: str = ""
+    groq_whisper_model: str = "whisper-large-v3-turbo"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
 
     # Langfuse (optional)
     langfuse_public_key: str = ""

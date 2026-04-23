@@ -14,7 +14,6 @@ import datetime
 import json
 import logging
 import uuid
-from pathlib import Path
 from typing import Any, ClassVar
 
 import asyncpg
@@ -233,11 +232,11 @@ async def _fire_telegram_alert(
 
     if sent_any:
         log.info(
-            "vitals_alert_sent",
-            senior_id=str(senior_id),
-            severity=highest.severity,
-            markers=[a.marker for a in high_urgent],
-            recipients=list(set(recipients)),
+            "vitals_alert_sent senior=%s severity=%s markers=%s recipients=%s",
+            senior_id,
+            highest.severity,
+            [a.marker for a in high_urgent],
+            list(set(recipients)),
         )
     return sent_any
 

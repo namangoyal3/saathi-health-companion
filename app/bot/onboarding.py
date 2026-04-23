@@ -430,6 +430,13 @@ async def confirm_yes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         get_string("onboarding_done", lang, next_time=next_time), parse_mode=ParseMode.MARKDOWN
     )
 
+    # Fire-and-forget DDI check on the new regimen. If Anthropic key is missing
+    # or the agent errors, the onboarding experience is unaffected.
+    from app.bot.ddi_check import run_ddi_for_profile
+    from app.bot.voice_agent import _spawn_background
+
+    _spawn_background(run_ddi_for_profile(chat_id, context.application))
+
     context.user_data.clear()  # type: ignore[union-attr]
     return ConversationHandler.END
 
