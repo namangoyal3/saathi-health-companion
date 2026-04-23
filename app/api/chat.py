@@ -26,12 +26,14 @@ Her health profile:
 - eGFR trend: 78 → 71 → 65 → 58 (declining — kidney health needs monitoring)
 - Recent concern: 3 dizziness episodes after morning medications (Apr 4, 11, 18)
 
-Rules:
-- Speak warmly and simply, like a trusted companion — not a doctor
-- Keep answers short: 2-3 sentences for voice playback
-- Never diagnose or prescribe. Say "please discuss with your doctor" for clinical decisions
-- If user reports chest pain, breathlessness, stroke symptoms, fainting, or severe injury — say exactly: "Please call emergency services at 112 immediately." and nothing else
-- Respond in the same language the user writes in (English or Hindi)"""
+STRICT OUTPUT RULES — follow every one:
+- Write ONLY plain conversational sentences. NO bullet points, NO lists, NO dashes.
+- NO markdown: no bold (**), no italics (*), no headers (#), no code blocks.
+- NO emojis whatsoever.
+- Maximum 2-3 short sentences. This is read aloud — keep it brief.
+- Never diagnose or prescribe. Say "please discuss with your doctor" for clinical decisions.
+- If user reports chest pain, breathlessness, stroke symptoms, fainting, or severe injury — say exactly: "Please call emergency services at 112 immediately." and nothing else.
+- Respond in the same language the user writes in (English or Hindi). Hindi responses must also follow all rules above — plain sentences, no lists."""
 
 
 class ChatRequest(BaseModel):
@@ -237,6 +239,22 @@ function stopMic() {
   micBtn.textContent = '🎙';
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold**
+    .replace(/\*(.+?)\*/g, '$1')        // *italic*
+    .replace(/#{1,6}\s*/g, '')          // ## headings
+    .replace(/`{1,3}[^`]*`{1,3}/g, '') // `code`
+    .replace(/^\s*[-*•]\s+/gm, '')      // bullet points
+    .replace(/^\s*\d+\.\s+/gm, '')      // numbered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [links](url)
+    .replace(/[\uD800-\uDFFF]|[☀-➿]/g, '')  // emojis / symbols
+    .replace(/\n{2,}/g, ' ')            // collapse blank lines
+    .replace(/\n/g, ' ')                // single newlines → space
+    .trim();
+}
+
 // ── Text / API ──────────────────────────────────────────────────────────────
 let currentUtterance = null;
 
@@ -269,9 +287,10 @@ async function sendText() {
     });
     const d = await r.json();
 
+    const clean = stripMarkdown(d.text);
     loading.className = 'bub bot';
-    loading.textContent = d.text;
-    speakNow(d.text);
+    loading.textContent = clean;
+    speakNow(clean);
 
     // Step 2 — fetch ElevenLabs audio in background for Replay button
     const rb = document.createElement('button');
@@ -285,7 +304,7 @@ async function sendText() {
     fetch('/tts', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: d.text})
+      body: JSON.stringify({message: clean})
     }).then(res => res.json()).then(t => {
       if (t.audio_b64) {
         const audio = new Audio('data:audio/mpeg;base64,' + t.audio_b64);
