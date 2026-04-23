@@ -120,4 +120,16 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
         hmac_verified=True,
     )
 
-    return {"ok": True, "date": payload.date}
+    # Run VitalsAnomalyAgent inline so the webhook response carries the detection
+    # result. For production volumes move this behind an arq enqueue (the job
+    # handler detect_vitals_anomalies is already wired).
+    from app.workers.vitals_anomaly import process_summary
+
+    try:
+        detection = await process_summary(payload.senior_id, payload.date)
+    except Exception as exc:
+        log.warning("vitals_detection_failed senior=%s date=%s err=%s",
+                    payload.senior_id, payload.date, exc)
+        detection = {"anomaly_count": 0, "alerted": False, "severities": []}
+
+    return {"ok": True, "date": payload.date, "detection": detection}

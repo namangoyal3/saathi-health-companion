@@ -17,6 +17,7 @@ from telegram import Update
 from app.api.chat import router as chat_router
 from app.api.ivr import router as ivr_router
 from app.api.labs import router as labs_router
+from app.api.vitals_simulator import router as vitals_simulator_router
 from app.api.wearable import router as wearable_router
 from app.bot import db as bot_db
 from app.bot.application import build_application
@@ -77,6 +78,7 @@ app.include_router(chat_router)
 app.include_router(labs_router)
 app.include_router(ivr_router)
 app.include_router(wearable_router)
+app.include_router(vitals_simulator_router)
 
 
 def _git_sha() -> str:

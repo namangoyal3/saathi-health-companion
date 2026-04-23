@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saath — Galaxy Watch Simulator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
+    .subtitle { color: #64748b; font-size: .85rem; margin: .25rem 0 2rem; }
+    .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; margin-bottom: 1.5rem; }
+    .card h2 { font-size: .82rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+    .senior-select { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .senior-select label { color: #94a3b8; font-size: .875rem; }
+    .senior-select input, .senior-select select { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; padding: .5rem .75rem; border-radius: 8px; font-size: .8125rem; font-family: inherit; }
+    .senior-select input { min-width: 320px; font-family: monospace; }
+    .scenarios { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; }
+    .btn { display: flex; flex-direction: column; align-items: flex-start; padding: .875rem 1rem; border: 1px solid #334155; border-radius: 10px; background: #0f172a; color: #e2e8f0; cursor: pointer; transition: all .15s; text-align: left; font-family: inherit; }
+    .btn:hover:not(:disabled) { border-color: #6366f1; background: #1e1b4b; }
+    .btn:disabled { opacity: .5; cursor: wait; }
+    .btn.sending { border-color: #f59e0b; }
+    .btn.sent    { border-color: #10b981; }
+    .btn .label  { font-weight: 600; font-size: .875rem; margin-bottom: .25rem; }
+    .btn .values { font-size: .7rem; color: #64748b; font-family: monospace; line-height: 1.4; }
+    .btn.normal   .label { color: #10b981; }
+    .btn.warning  .label { color: #f59e0b; }
+    .btn.critical .label { color: #ef4444; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .75rem; }
+    .stat { background: #0f172a; border-radius: 8px; padding: .875rem; border: 1px solid #1e293b; }
+    .stat .name { font-size: .65rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .25rem; }
+    .stat .value { font-size: 1.25rem; font-weight: 700; font-family: monospace; }
+    .stat.ok   .value { color: #10b981; }
+    .stat.warn .value { color: #f59e0b; }
+    .stat.crit .value { color: #ef4444; }
+    .anomaly-list { margin-top: 1rem; }
+    .anomaly { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem; border-radius: 8px; margin-bottom: .5rem; background: #0f172a; border: 1px solid #1e293b; }
+    .badge { padding: .2rem .5rem; border-radius: 4px; font-size: .65rem; font-weight: 700; letter-spacing: .05em; flex-shrink: 0; }
+    .badge.URGENT { background: #7f1d1d; color: #fca5a5; }
+    .badge.HIGH   { background: #7c2d12; color: #fdba74; }
+    .badge.MEDIUM { background: #1e3a5f; color: #93c5fd; }
+    .anomaly .text { font-size: .8125rem; color: #cbd5e1; line-height: 1.4; }
+    .anomaly .ts { font-size: .65rem; color: #475569; margin-top: .25rem; }
+    .anomaly .alerted { color: #10b981; font-size: .7rem; margin-left: .5rem; }
+    #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .75rem 1.25rem; border-radius: 8px; font-size: .875rem; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 420px; }
+    #toast.show { opacity: 1; }
+    #toast.ok  { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+    #toast.err { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .poll { font-size: .7rem; color: #334155; font-weight: 400; }
+    .poll.live { color: #10b981; }
+    .empty { color: #475569; font-size: .8125rem; text-align: center; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>🩺 Galaxy Watch Simulator</h1>
+  <p class="subtitle">Posts daily-summary scenarios to <code>/wearable/samsung/webhook</code> → triggers VitalsAnomalyAgent → Telegram alert to Priya</p>
+
+  <div class="card">
+    <h2>Senior</h2>
+    <div class="senior-select">
+      <label for="senior">senior_id:</label>
+      <input id="senior" value="00000000-0000-0000-0000-000000000001">
+      <span style="color:#64748b;font-size:.8rem">Lakshmi Iyer (demo)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Send Daily Summary Scenario</h2>
+    <div class="scenarios">
+      {% for key, s in scenarios.items() %}
+      <button class="btn {% if key == 'normal' %}normal{% elif key in ['spo2_dip','dizziness_episode'] %}critical{% else %}warning{% endif %}" data-scenario="{{ key }}">
+        <span class="label">{{ s.label }}</span>
+        <span class="values">HR {{ s.avg_heart_rate }} · SpO₂ {{ s.avg_spo2_pct }}% · Steps {{ s.steps }}<br>Sleep {{ s.sleep_minutes }}m · HRV {{ s.hrv_rmssd }}ms · Stress {{ s.stress_score }}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Live Status <span id="poll" class="poll">polling…</span></h2>
+    <div class="status-grid" id="stats">
+      <div class="stat" id="stat-hr"><div class="name">Heart Rate</div><div class="value">—</div></div>
+      <div class="stat" id="stat-spo2"><div class="name">SpO₂</div><div class="value">—</div></div>
+      <div class="stat" id="stat-steps"><div class="name">Steps</div><div class="value">—</div></div>
+      <div class="stat" id="stat-sleep"><div class="name">Sleep</div><div class="value">—</div></div>
+      <div class="stat" id="stat-hrv"><div class="name">HRV</div><div class="value">—</div></div>
+      <div class="stat" id="stat-stress"><div class="name">Stress</div><div class="value">—</div></div>
+    </div>
+    <div class="anomaly-list" id="anomalies"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = `show ${type}`;
+      setTimeout(() => el.className = '', 3500);
+    }
+
+    function classify(el, value, marker) {
+      const v = document.querySelector(`#${el.id} .value`);
+      if (value === null || value === undefined) { v.textContent = '—'; el.className = 'stat'; return; }
+      v.textContent = value;
+      el.className = 'stat';
+      if (marker === 'hr')      el.classList.add(value > 105 || value < 45 ? 'crit' : value > 95 || value < 50 ? 'warn' : 'ok');
+      else if (marker === 'spo2')  el.classList.add(value < 90 ? 'crit' : value < 95 ? 'warn' : 'ok');
+      else if (marker === 'steps') el.classList.add(value < 2000 ? 'warn' : 'ok');
+      else if (marker === 'sleep') el.classList.add(value < 240 ? 'crit' : value < 300 ? 'warn' : 'ok');
+      else if (marker === 'hrv')   el.classList.add(value < 15 ? 'crit' : value < 20 ? 'warn' : 'ok');
+      else if (marker === 'stress') el.classList.add(value > 85 ? 'crit' : value > 70 ? 'warn' : 'ok');
+    }
+
+    document.querySelectorAll('.btn[data-scenario]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const scenario = btn.dataset.scenario;
+        const seniorId = document.getElementById('senior').value.trim();
+        btn.classList.add('sending'); btn.disabled = true;
+        try {
+          const res = await fetch('/api/vitals-simulator/send', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({senior_id: seniorId, scenario}),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const j = await res.json();
+          btn.classList.remove('sending'); btn.classList.add('sent');
+          setTimeout(() => btn.classList.remove('sent'), 2500);
+          const det = j.upstream?.detection;
+          if (det && det.anomaly_count > 0) {
+            toast(`✓ ${scenario} — ${det.anomaly_count} anomalies (${det.severities.join(', ')})${det.alerted ? ' · Telegram sent' : ''}`, 'ok');
+          } else {
+            toast(`✓ ${scenario} — no anomalies`, 'ok');
+          }
+          poll();
+        } catch (e) {
+          btn.classList.remove('sending'); toast(`Error: ${e.message}`, 'err');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    async function poll() {
+      const seniorId = document.getElementById('senior').value.trim();
+      if (!seniorId) return;
+      try {
+        const res = await fetch(`/api/vitals-simulator/status/${seniorId}`);
+        const data = await res.json();
+        document.getElementById('poll').textContent = 'live ●';
+        document.getElementById('poll').classList.add('live');
+
+        const s = data.last_summary;
+        classify(document.getElementById('stat-hr'),     s?.avg_heart_rate, 'hr');
+        classify(document.getElementById('stat-spo2'),   s?.avg_spo2_pct ? s.avg_spo2_pct + '%' : null, 'spo2');
+        classify(document.getElementById('stat-steps'),  s?.steps, 'steps');
+        classify(document.getElementById('stat-sleep'),  s?.sleep_minutes ? s.sleep_minutes + 'm' : null, 'sleep');
+        classify(document.getElementById('stat-hrv'),    s?.hrv_rmssd ? s.hrv_rmssd + 'ms' : null, 'hrv');
+        classify(document.getElementById('stat-stress'), s?.stress_score, 'stress');
+
+        const al = document.getElementById('anomalies');
+        if (!data.recent_anomalies.length) {
+          al.innerHTML = '<p class="empty">No anomalies yet. Pick a scenario above.</p>';
+        } else {
+          al.innerHTML = data.recent_anomalies.map(a => `
+            <div class="anomaly">
+              <span class="badge ${a.severity}">${a.severity}</span>
+              <div style="flex:1">
+                <div class="text">${a.narrative}${a.alerted ? '<span class="alerted">✓ alerted</span>' : ''}</div>
+                <div class="ts">${a.marker} = ${a.value} (threshold ${a.threshold}) · ${a.summary_date} · ${new Date(a.created_at).toLocaleTimeString()}</div>
+              </div>
+            </div>`).join('');
+        }
+      } catch (e) {
+        document.getElementById('poll').textContent = 'offline ✕';
+        document.getElementById('poll').classList.remove('live');
+      }
+    }
+
+    poll();
+    setInterval(poll, 5000);
+  </script>
+</body>
+</html>
