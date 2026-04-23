@@ -171,6 +171,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
             background:#f1f3f4;border:none;border-radius:12px;
             padding:5px 12px;font-size:12px;cursor:pointer;color:#5f6368}
 .replay-btn:hover{background:#e8eaed}
+.replay-btn.needs-tap{background:#1a73e8;color:#fff;font-size:14px;
+            padding:10px 18px;margin-top:12px;font-weight:600;
+            animation:pulse 1.6s ease-in-out infinite;box-shadow:0 2px 8px rgba(26,115,232,.35)}
+.replay-btn.needs-tap:hover{background:#1765cc}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 .bar{padding:14px 16px;border-top:1px solid #e8eaed;background:#fff;
      display:flex;gap:10px;align-items:center}
 #inp{flex:1;padding:13px 18px;border:1.5px solid #dadce0;border-radius:26px;
@@ -328,12 +333,28 @@ function speakNow(text) {
   window.speechSynthesis.speak(u);
 }
 
+// Shared audio element — priming it inside a user gesture lets us set .src
+// later (after the async fetch) and call .play() without the autoplay block.
+const primedAudio = new Audio();
+let audioPrimed = false;
+
+function primeAudio() {
+  if (audioPrimed) return;
+  try {
+    // 1ms of silent WAV — establishes user-gesture credit for subsequent plays.
+    primedAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    primedAudio.play().then(() => { audioPrimed = true; }).catch(() => {});
+  } catch(_) {}
+}
+
 async function sendText() {
   const text = inp.value.trim();
   if (!text) return;
   inp.value = '';
   sendBtn.disabled = true;
   micBtn.disabled = true;
+
+  primeAudio();  // runs inside the click/Enter gesture
 
   addBubble(text, 'user');
   const loading = addBubble('Thinking…', 'bot thinking');
@@ -351,49 +372,49 @@ async function sendText() {
     loading.className = 'bub bot';
     loading.textContent = clean;
 
-    // Step 2 — fetch ElevenLabs audio; auto-play when it arrives.
-    // Falls back to browser speechSynthesis if ElevenLabs is slow, unavailable,
-    // or the browser blocks autoplay.
+    // Fetch ElevenLabs audio. Always prefer Lakshmi's voice over browser TTS.
+    // If the browser blocks autoplay after the async fetch, we surface a
+    // large "Tap to hear" button the user can click — that click IS a valid
+    // user gesture and always unlocks playback.
     const rb = document.createElement('button');
     rb.className = 'replay-btn';
-    rb.innerHTML = '▶ Loading voice…';
+    rb.innerHTML = '⏳ Loading voice…';
     rb.disabled = true;
     rb.style.opacity = '0.5';
     loading.appendChild(document.createElement('br'));
     loading.appendChild(rb);
-
-    // If ElevenLabs doesn't land in 4s, kick in browser TTS so the user hears *something*.
-    let fallbackTimer = setTimeout(() => speakNow(clean), 4000);
-    let autoplayFailed = false;
 
     fetch('/tts', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({message: clean})
     }).then(res => res.json()).then(t => {
-      clearTimeout(fallbackTimer);
       if (!t.audio_b64) {
-        speakNow(clean);          // no ElevenLabs → browser TTS
+        // ElevenLabs genuinely unavailable — only now fall back to browser TTS.
         rb.remove();
+        speakNow(clean);
         return;
       }
-      const audio = new Audio('data:audio/mpeg;base64,' + t.audio_b64);
+
+      // Re-use the primed audio element so Chrome honors the original
+      // user-gesture credit captured by primeAudio() on the send click.
+      primedAudio.src = 'data:audio/mpeg;base64,' + t.audio_b64;
+      try { primedAudio.load(); } catch(_) {}
+
       rb.disabled = false;
       rb.style.opacity = '1';
       rb.innerHTML = '▶ Replay';
-      rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
+      rb.onclick = () => { primedAudio.currentTime = 0; primedAudio.play().catch(() => {}); };
 
-      // Auto-play on arrival. Cancel any browser TTS that may have started.
-      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(_) {}
-      audio.play().catch(err => {
-        // Autoplay blocked (some browsers) — fall back to browser TTS so user hears the reply.
-        autoplayFailed = true;
-        speakNow(clean);
+      // Auto-play — should succeed now that primedAudio was touched inside
+      // the send click. If the browser still blocks, upgrade the button.
+      primedAudio.play().catch(() => {
+        rb.innerHTML = '🔊 Tap to hear Lakshmi';
+        rb.classList.add('needs-tap');
       });
     }).catch(() => {
-      clearTimeout(fallbackTimer);
-      speakNow(clean);
       rb.remove();
+      speakNow(clean);
     });
 
   } catch(e) {
