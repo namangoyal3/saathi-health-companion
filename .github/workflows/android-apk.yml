@@ -16,6 +16,10 @@ jobs:
   build-apk:
     name: Build debug APK
     runs-on: ubuntu-latest
+    # `contents: write` is needed for the Release-creation step below.
+    # Everything else stays read-only.
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: android/saath-companion
@@ -69,3 +73,61 @@ jobs:
           path: artifacts/*.apk
           retention-days: 30
           if-no-files-found: error
+
+      # Publish the APK as a GitHub Release so there's a stable, tappable
+      # download URL (artifacts require GitHub login; releases don't).
+      # Runs on push to long-lived branches only — not on PRs or feature
+      # branches, to keep the release list tidy.
+      - name: Publish Release with APK
+        if: >-
+          github.event_name == 'push'
+          && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/day3/'))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          TAG="apk-${SHORT_SHA}"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          BRANCH_SLUG="${BRANCH//\//-}"
+          APK="artifacts/saath-companion-${SHORT_SHA}.apk"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — replacing asset."
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            cat > /tmp/release_notes.md <<MD
+          Debug APK built from commit [\`$SHORT_SHA\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on branch \`$BRANCH\`.
+
+          **Direct download:** \`saath-companion-${SHORT_SHA}.apk\` (below)
+
+          Triggered by: \`${GITHUB_EVENT_NAME}\`
+          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          ## Install on Galaxy
+
+          1. Tap the APK link above (no GitHub login needed).
+          2. Allow "install from this source" when Android prompts.
+          3. Open Saath → enter Senior ID + Shared Secret + Backend URL → grant Health Connect permissions.
+          4. First sync runs on Finish. With HC permissions it posts real watch data; without, it posts a mock \`dizziness_episode\` payload so you can verify the backend pipeline.
+          MD
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "APK — $BRANCH_SLUG @ $SHORT_SHA" \
+              --prerelease \
+              --notes-file /tmp/release_notes.md \
+              "$APK"
+          fi
+
+          RELEASE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+          DOWNLOAD_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/saath-companion-${SHORT_SHA}.apk"
+          echo ""
+          echo "::notice title=APK published::$DOWNLOAD_URL"
+          {
+            echo "## 📱 APK published"
+            echo ""
+            echo "**Download:** $DOWNLOAD_URL"
+            echo ""
+            echo "**Release page:** $RELEASE_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
