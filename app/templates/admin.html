@@ -12,15 +12,14 @@
       background: #0a0f1c;
       color: #e2e8f0;
       display: grid;
-      grid-template-rows: 54px 1fr;
-      grid-template-columns: 1fr;
+      grid-template-rows: 52px 1fr;
     }
 
-    /* ── TOP BAR ─────────────────────────────────────── */
+    /* ── TOP BAR ─────────────────────────────────── */
     .topbar {
       background: #0a0f1c;
       border-bottom: 1px solid #1e2a44;
-      display: flex; align-items: center; gap: 1rem;
+      display: flex; align-items: center; gap: .9rem;
       padding: 0 1rem;
       overflow-x: auto;
     }
@@ -30,7 +29,7 @@
       display: flex; align-items: center; gap: .35rem;
     }
     .topbar h1 .sub { color: #64748b; font-weight: 400; font-size: .7rem; }
-    .chips { display: flex; gap: .35rem; flex-wrap: nowrap; }
+    .chips { display: flex; gap: .3rem; flex-wrap: nowrap; }
     .chip {
       font-size: .65rem; padding: .15rem .5rem;
       background: #121826; border: 1px solid #1e2a44; border-radius: 12px;
@@ -61,7 +60,7 @@
     /* ── MAIN GRID (3 columns) ───────────────────────── */
     .main {
       display: grid;
-      grid-template-columns: 1fr 1fr 380px;
+      grid-template-columns: 1fr 1fr 360px;
       gap: 1px;
       background: #1e2a44;
       overflow: hidden;
@@ -69,41 +68,126 @@
     }
     @media (max-width: 1100px) {
       .main { grid-template-columns: 1fr 1fr; }
-      .sidebar { display: none; }  /* fallback: hide sidebar on narrow */
+      .sidebar { display: none; }
     }
     @media (max-width: 720px) {
       .main { grid-template-columns: 1fr; }
-      .pane.lakshmi { display: none; }
+      .chat-pane.lakshmi { display: none; }
     }
 
-    .pane {
-      background: #121826;
+    /* ── CHAT PANE (native, no iframe) ───────────────── */
+    .chat-pane {
+      background: #0f172a;
       display: flex; flex-direction: column;
       overflow: hidden; min-height: 0;
     }
-    .pane-head {
+    .chat-head {
       padding: .55rem .85rem;
       background: #0a0f1c;
       border-bottom: 1px solid #1e2a44;
       display: flex; align-items: center; justify-content: space-between;
       flex-shrink: 0;
     }
-    .pane-head .title {
-      font-size: .72rem; font-weight: 600;
-      letter-spacing: .04em; text-transform: uppercase;
-      color: #94a3b8;
+    .chat-head .who {
+      display: flex; align-items: center; gap: .5rem;
     }
-    .pane-head .open-ext {
+    .chat-head .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .chat-pane.priya .avatar { background: #312e81; }
+    .chat-pane.lakshmi .avatar { background: #134e4a; }
+    .chat-head .title {
+      font-size: .82rem; font-weight: 600; color: #f1f5f9;
+    }
+    .chat-head .subtitle {
+      font-size: .67rem; color: #64748b; margin-top: .05rem;
+    }
+    .chat-head .open-ext {
       color: #64748b; text-decoration: none; font-size: .7rem;
       padding: .15rem .45rem; border-radius: 4px;
     }
-    .pane-head .open-ext:hover { color: #818cf8; background: #1e1b4b; }
-    .pane iframe {
-      flex: 1; border: none; width: 100%; background: #fff;
+    .chat-head .open-ext:hover { color: #818cf8; background: #1e1b4b; }
+
+    .msgs {
+      flex: 1; overflow-y: auto;
+      padding: .9rem;
+      display: flex; flex-direction: column; gap: .6rem;
       min-height: 0;
     }
+    .msgs::-webkit-scrollbar { width: 5px; }
+    .msgs::-webkit-scrollbar-thumb { background: #1e2a44; border-radius: 3px; }
 
-    /* ── SIDEBAR (right column) ──────────────────────── */
+    .bub {
+      max-width: 86%;
+      padding: .6rem .85rem;
+      border-radius: 14px;
+      font-size: .83rem; line-height: 1.5;
+      word-break: break-word;
+    }
+    .bub.user {
+      background: #4338ca; color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-pane.lakshmi .bub.user { background: #0e7490; }
+    .bub.bot {
+      background: #1e293b; color: #e2e8f0;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #334155;
+    }
+    .bub.bot.thinking { color: #64748b; font-style: italic; }
+
+    .suggestions {
+      padding: 0 .9rem .6rem;
+      display: flex; gap: .35rem; flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .sugg {
+      background: #1e1b4b; border: 1px solid #312e81;
+      color: #c7d2fe; font-size: .68rem;
+      padding: .28rem .6rem; border-radius: 12px;
+      cursor: pointer; font-weight: 500;
+    }
+    .sugg:hover { background: #312e81; }
+    .chat-pane.lakshmi .sugg { background: #134e4a; border-color: #115e59; color: #99f6e4; }
+    .chat-pane.lakshmi .sugg:hover { background: #115e59; }
+
+    .input-bar {
+      padding: .65rem .75rem;
+      border-top: 1px solid #1e2a44;
+      background: #0a0f1c;
+      display: flex; gap: .5rem; align-items: center;
+      flex-shrink: 0;
+    }
+    .input-bar input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #1e2a44;
+      color: #e2e8f0;
+      padding: .5rem .75rem;
+      border-radius: 8px;
+      font-size: .82rem;
+      outline: none;
+      font-family: inherit;
+    }
+    .input-bar input:focus { border-color: #6366f1; }
+    .chat-pane.lakshmi .input-bar input:focus { border-color: #14b8a6; }
+    .input-bar button {
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: #6366f1; color: #fff;
+      cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .input-bar button:hover { background: #4f46e5; }
+    .input-bar button:disabled { background: #334155; cursor: not-allowed; }
+    .chat-pane.lakshmi .input-bar button { background: #14b8a6; }
+    .chat-pane.lakshmi .input-bar button:hover { background: #0d9488; }
+
+    /* ── SIDEBAR (right) ─────────────────────────────── */
     .sidebar {
       background: #121826;
       display: flex; flex-direction: column;
@@ -141,7 +225,6 @@
       font-size: .6rem; text-transform: none; letter-spacing: 0;
     }
 
-    /* ── Anomaly cards ───────────────────────────────── */
     .anomaly {
       background: #0a0f1c; border: 1px solid #1e2a44;
       border-radius: 6px; padding: .5rem .6rem;
@@ -168,7 +251,6 @@
     .pill.senior   { background: #1e3a5f; color: #93c5fd; }
     .pill.guardian { background: #581c87; color: #d8b4fe; }
 
-    /* ── Watch stats grid ────────────────────────────── */
     .watch-grid {
       display: grid; grid-template-columns: 1fr 1fr;
       gap: .4rem; margin-bottom: .5rem;
@@ -186,7 +268,6 @@
     .watch-stat.warn .v { color: #f59e0b; }
     .watch-stat.crit .v { color: #ef4444; }
 
-    /* ── Profile / user rows ─────────────────────────── */
     .row {
       display: flex; justify-content: space-between; align-items: center;
       padding: .35rem .5rem; background: #0a0f1c;
@@ -196,7 +277,6 @@
     .row .name { color: #e2e8f0; font-weight: 500; }
     .row .meta { font-family: monospace; font-size: .63rem; color: #64748b; }
 
-    /* ── Flag counts ────────────────────────────────── */
     .mini-stat {
       display: flex; justify-content: space-between; align-items: center;
       padding: .28rem .35rem; font-size: .72rem;
@@ -205,7 +285,6 @@
     }
     .mini-stat .v { color: #e2e8f0; font-family: monospace; font-weight: 600; }
 
-    /* ── Simulator embed inside sidebar ──────────────── */
     .sim-embed {
       flex: 1; border: none; width: 100%; background: #0a0f1c;
       min-height: 0;
@@ -232,25 +311,60 @@
   <!-- ── MAIN GRID ───────────────────────────────── -->
   <div class="main">
 
-    <!-- COL 1: Priya chat -->
-    <div class="pane">
-      <div class="pane-head">
-        <span class="title">👩🏽 Priya · Guardian</span>
+    <!-- PRIYA (native chat panel) -->
+    <div class="chat-pane priya">
+      <div class="chat-head">
+        <div class="who">
+          <span class="avatar">👩🏽</span>
+          <div>
+            <div class="title">Priya Iyer</div>
+            <div class="subtitle">Guardian · San Jose · Lakshmi's daughter</div>
+          </div>
+        </div>
         <a href="/priya" target="_blank" class="open-ext">open ↗</a>
       </div>
-      <iframe src="/priya"></iframe>
+      <div class="msgs" id="priya-msgs">
+        <div class="bub bot">Hi Priya — I'm Saathi. Ask me anything about how Lakshmi is doing today.</div>
+      </div>
+      <div class="suggestions">
+        <span class="sugg" onclick="askPriya('How is Mom doing today?')">How is Mom today?</span>
+        <span class="sugg" onclick="askPriya('Any red flags from her watch?')">Red flags?</span>
+        <span class="sugg" onclick="askPriya('Did she take her morning meds?')">Morning meds?</span>
+        <span class="sugg" onclick="askPriya('Summarize the week')">Week summary</span>
+      </div>
+      <div class="input-bar">
+        <input id="priya-inp" placeholder="Type your message…" onkeydown="if(event.key==='Enter')sendPriya()">
+        <button onclick="sendPriya()">➤</button>
+      </div>
     </div>
 
-    <!-- COL 2: Lakshmi chat -->
-    <div class="pane lakshmi">
-      <div class="pane-head">
-        <span class="title">👵🏽 Lakshmi · Senior</span>
+    <!-- LAKSHMI (native chat panel) -->
+    <div class="chat-pane lakshmi">
+      <div class="chat-head">
+        <div class="who">
+          <span class="avatar">👵🏽</span>
+          <div>
+            <div class="title">Lakshmi Iyer</div>
+            <div class="subtitle">Senior · Bengaluru · T2DM + CKD + HTN</div>
+          </div>
+        </div>
         <a href="/" target="_blank" class="open-ext">open ↗</a>
       </div>
-      <iframe src="/"></iframe>
+      <div class="msgs" id="lak-msgs">
+        <div class="bub bot">Namaste Lakshmi! I'm Saathi, your health companion. Ask me anything.</div>
+      </div>
+      <div class="suggestions">
+        <span class="sugg" onclick="askLak('How was my sleep?')">How was my sleep?</span>
+        <span class="sugg" onclick="askLak('What time should I take Telmisartan?')">Telmisartan?</span>
+        <span class="sugg" onclick="askLak('I felt dizzy this morning')">Felt dizzy</span>
+      </div>
+      <div class="input-bar">
+        <input id="lak-inp" placeholder="Type your message…" onkeydown="if(event.key==='Enter')sendLak()">
+        <button onclick="sendLak()">➤</button>
+      </div>
     </div>
 
-    <!-- COL 3: Sidebar with tabs -->
+    <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sidebar-tabs">
         <button class="stab active" data-tab="live" onclick="showTab('live')">Live Data</button>
@@ -258,61 +372,102 @@
         <button class="stab" data-tab="dir" onclick="showTab('dir')">Directory</button>
       </div>
 
-      <!-- Tab: LIVE DATA -->
       <div class="sidebar-body" id="tab-live">
-        <div class="section-title">
-          Latest Watch Day <span class="count" id="sum-date">—</span>
-        </div>
+        <div class="section-title">Latest Watch Day <span class="count" id="sum-date">—</span></div>
         <div class="watch-grid" id="watch-grid"></div>
 
-        <div class="section-title">
-          Recent Anomalies <span class="count" id="anom-count">0</span>
-        </div>
+        <div class="section-title">Recent Anomalies <span class="count" id="anom-count">0</span></div>
         <div id="anom-list"></div>
 
-        <div class="section-title" style="margin-top:.8rem">
-          Agent Flags · 7d
-        </div>
+        <div class="section-title" style="margin-top:.8rem">Agent Flags · 7d</div>
         <div id="flag-counts"></div>
       </div>
 
-      <!-- Tab: SIMULATOR iframe -->
       <div class="sidebar-body" id="tab-sim" style="display:none;padding:0;overflow:hidden">
-        <iframe class="sim-embed" src="/vitals-simulator" id="sim-frame"></iframe>
+        <iframe class="sim-embed" src="/vitals-simulator"></iframe>
       </div>
 
-      <!-- Tab: DIRECTORY (profiles, users, links) -->
       <div class="sidebar-body" id="tab-dir" style="display:none">
         <div class="section-title">Quick Links</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem;margin-bottom:.6rem">
           <a class="row" href="/docs" target="_blank" style="text-decoration:none">📚 API Docs</a>
           <a class="row" href="/health" target="_blank" style="text-decoration:none">❤️ Health JSON</a>
-          <a class="row" href="/api/admin/state" target="_blank" style="text-decoration:none">📊 Admin State</a>
+          <a class="row" href="/api/admin/state" target="_blank" style="text-decoration:none">📊 State JSON</a>
           <a class="row" href="https://github.com/namangoyal3/saathi-health-companion" target="_blank" style="text-decoration:none">🐙 GitHub</a>
         </div>
 
-        <div class="section-title">
-          Bot Profiles <span class="count" id="prof-count">0</span>
-        </div>
+        <div class="section-title">Bot Profiles <span class="count" id="prof-count">0</span></div>
         <div id="prof-list"></div>
 
-        <div class="section-title" style="margin-top:.75rem">
-          App Users <span class="count" id="user-count">0</span>
-        </div>
+        <div class="section-title" style="margin-top:.75rem">App Users <span class="count" id="user-count">0</span></div>
         <div id="user-list"></div>
       </div>
     </div>
   </div>
 
 <script>
-// ─── Health chips ─────────────────────────────────────
+// ─── Chat state ───────────────────────────────────────
+function addBubble(containerId, role, text, extra = '') {
+  const wrap = document.getElementById(containerId);
+  const el = document.createElement('div');
+  el.className = `bub ${role} ${extra}`.trim();
+  el.textContent = text;
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+  return el;
+}
+
+async function chatPost(url, message) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message}),
+  });
+  return res.json();
+}
+
+// Priya
+function askPriya(q) { document.getElementById('priya-inp').value = q; sendPriya(); }
+async function sendPriya() {
+  const inp = document.getElementById('priya-inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; inp.disabled = true;
+  addBubble('priya-msgs', 'user', text);
+  const thinking = addBubble('priya-msgs', 'bot', 'thinking…', 'thinking');
+  try {
+    const data = await chatPost('/priya/chat', text);
+    thinking.remove();
+    addBubble('priya-msgs', 'bot', data.text || '(no response)');
+  } catch (e) {
+    thinking.remove();
+    addBubble('priya-msgs', 'bot', 'Network error — try again.');
+  } finally { inp.disabled = false; inp.focus(); }
+}
+
+// Lakshmi
+function askLak(q) { document.getElementById('lak-inp').value = q; sendLak(); }
+async function sendLak() {
+  const inp = document.getElementById('lak-inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; inp.disabled = true;
+  addBubble('lak-msgs', 'user', text);
+  const thinking = addBubble('lak-msgs', 'bot', 'thinking…', 'thinking');
+  try {
+    const data = await chatPost('/chat', text);
+    thinking.remove();
+    addBubble('lak-msgs', 'bot', data.text || '(no response)');
+  } catch (e) {
+    thinking.remove();
+    addBubble('lak-msgs', 'bot', 'Network error — try again.');
+  } finally { inp.disabled = false; inp.focus(); }
+}
+
+// ─── Top-bar health chips ─────────────────────────────
 const HEALTH_CHIPS = [
-  ['db',               'DB'],
-  ['redis',            'Redis'],
-  ['alembic_revision', 'Rev'],
-  ['nvidia_key',       'NVIDIA'],
-  ['openrouter_key',   'OpenRouter'],
-  ['telegram_bot_token','TG'],
+  ['db','DB'], ['redis','Redis'], ['alembic_revision','Rev'],
+  ['nvidia_key','NVIDIA'], ['openrouter_key','OpenRouter'], ['telegram_bot_token','TG'],
 ];
 function chipClass(k, v) {
   if (k === 'alembic_revision') return v ? 'ok' : 'warn';
@@ -334,38 +489,28 @@ function renderHealth(h) {
   }).join('');
 }
 
-function hrClass(hr) {
-  if (hr == null) return '';
-  if (hr > 105 || hr < 45) return 'crit';
-  if (hr > 95  || hr < 50) return 'warn';
-  return 'ok';
-}
-function spo2Class(p) {
-  if (p == null) return '';
-  if (p < 90) return 'crit';
-  if (p < 95) return 'warn';
-  return 'ok';
-}
-function stepsClass(s) { return s == null ? '' : (s < 2000 ? 'warn' : 'ok'); }
-function sleepClass(m) { return m == null ? '' : (m < 240 ? 'crit' : m < 300 ? 'warn' : 'ok'); }
+function hrClass(hr)  { if (hr == null) return ''; return hr > 105 || hr < 45 ? 'crit' : hr > 95 || hr < 50 ? 'warn' : 'ok'; }
+function spo2Class(p) { if (p == null) return ''; return p < 90 ? 'crit' : p < 95 ? 'warn' : 'ok'; }
+function stepsClass(s){ return s == null ? '' : (s < 2000 ? 'warn' : 'ok'); }
+function sleepClass(m){ return m == null ? '' : (m < 240 ? 'crit' : m < 300 ? 'warn' : 'ok'); }
 
 function renderWatch(summaries) {
   if (!summaries.length) {
-    document.getElementById('watch-grid').innerHTML = '<div class="empty" style="grid-column:1/-1">No watch data yet. Click a scenario above.</div>';
+    document.getElementById('watch-grid').innerHTML = '<div class="empty" style="grid-column:1/-1">No watch data yet.</div>';
     document.getElementById('sum-date').textContent = '—';
     return;
   }
   const s = summaries[0];
   document.getElementById('sum-date').textContent = s.date;
   const cells = [
-    ['HR',     s.avg_heart_rate, s.avg_heart_rate ? s.avg_heart_rate + ' bpm' : '—', hrClass(s.avg_heart_rate)],
-    ['SpO₂',   s.avg_spo2_pct,   s.avg_spo2_pct ? s.avg_spo2_pct + '%' : '—',       spo2Class(s.avg_spo2_pct)],
-    ['Steps',  s.steps,          s.steps ?? '—',                                     stepsClass(s.steps)],
-    ['Sleep',  s.sleep_minutes,  s.sleep_minutes ? Math.round(s.sleep_minutes/60*10)/10+'h' : '—', sleepClass(s.sleep_minutes)],
-    ['HRV',    s.hrv_rmssd,      s.hrv_rmssd ? s.hrv_rmssd+' ms' : '—',              ''],
-    ['Stress', s.stress_score,   s.stress_score ?? '—',                              ''],
+    ['HR',     s.avg_heart_rate ? s.avg_heart_rate + ' bpm' : '—', hrClass(s.avg_heart_rate)],
+    ['SpO₂',   s.avg_spo2_pct ? s.avg_spo2_pct + '%' : '—',       spo2Class(s.avg_spo2_pct)],
+    ['Steps',  s.steps ?? '—',                                     stepsClass(s.steps)],
+    ['Sleep',  s.sleep_minutes ? Math.round(s.sleep_minutes/60*10)/10+'h' : '—', sleepClass(s.sleep_minutes)],
+    ['HRV',    s.hrv_rmssd ? s.hrv_rmssd+' ms' : '—',              ''],
+    ['Stress', s.stress_score ?? '—',                              ''],
   ];
-  document.getElementById('watch-grid').innerHTML = cells.map(([k,_,v,c]) =>
+  document.getElementById('watch-grid').innerHTML = cells.map(([k,v,c]) =>
     `<div class="watch-stat ${c}"><div class="k">${k}</div><div class="v">${v}</div></div>`
   ).join('');
 }
@@ -419,20 +564,20 @@ function renderUsers(users) {
   ).join('');
 }
 
-// ─── Tab switching ────────────────────────────────────
+// Tabs
 function showTab(name) {
   document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   ['live','sim','dir'].forEach(n => {
     document.getElementById('tab-'+n).style.display = (n === name) ? 'block' : 'none';
   });
-  // Sim tab uses padding:0 + iframe fill; restore block/flex as needed
   if (name === 'sim') {
-    document.getElementById('tab-sim').style.display = 'flex';
-    document.getElementById('tab-sim').style.flexDirection = 'column';
+    const t = document.getElementById('tab-sim');
+    t.style.display = 'flex';
+    t.style.flexDirection = 'column';
   }
 }
 
-// ─── Scenario quick-send ──────────────────────────────
+// Scenario
 async function sendScenario(key) {
   try {
     flash(`Sending ${key}…`);
@@ -448,9 +593,7 @@ async function sendScenario(key) {
     const det = data.upstream?.detection || {};
     flash(`${key} · ${det.anomaly_count ?? 0} anomalies`);
     setTimeout(refresh, 500);
-  } catch (e) {
-    flash(`Error: ${e.message}`);
-  }
+  } catch (e) { flash(`Error: ${e.message}`); }
 }
 let _flashTimer;
 function flash(msg) {
@@ -462,7 +605,7 @@ function flash(msg) {
   }, 2500);
 }
 
-// ─── Main poll loop ───────────────────────────────────
+// Poll
 async function refresh() {
   try {
     const res = await fetch('/api/admin/state');
