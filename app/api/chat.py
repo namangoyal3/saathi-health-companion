@@ -350,32 +350,51 @@ async function sendText() {
     const clean = stripMarkdown(d.text);
     loading.className = 'bub bot';
     loading.textContent = clean;
-    speakNow(clean);
 
-    // Step 2 — fetch ElevenLabs audio in background for Replay button
+    // Step 2 — fetch ElevenLabs audio; auto-play when it arrives.
+    // Falls back to browser speechSynthesis if ElevenLabs is slow, unavailable,
+    // or the browser blocks autoplay.
     const rb = document.createElement('button');
     rb.className = 'replay-btn';
-    rb.innerHTML = '▶ Replay';
+    rb.innerHTML = '▶ Loading voice…';
     rb.disabled = true;
     rb.style.opacity = '0.5';
     loading.appendChild(document.createElement('br'));
     loading.appendChild(rb);
+
+    // If ElevenLabs doesn't land in 4s, kick in browser TTS so the user hears *something*.
+    let fallbackTimer = setTimeout(() => speakNow(clean), 4000);
+    let autoplayFailed = false;
 
     fetch('/tts', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({message: clean})
     }).then(res => res.json()).then(t => {
-      if (t.audio_b64) {
-        const audio = new Audio('data:audio/mpeg;base64,' + t.audio_b64);
-        rb.disabled = false;
-        rb.style.opacity = '1';
-        rb.innerHTML = '▶ Replay';
-        rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
-      } else {
+      clearTimeout(fallbackTimer);
+      if (!t.audio_b64) {
+        speakNow(clean);          // no ElevenLabs → browser TTS
         rb.remove();
+        return;
       }
-    }).catch(() => rb.remove());
+      const audio = new Audio('data:audio/mpeg;base64,' + t.audio_b64);
+      rb.disabled = false;
+      rb.style.opacity = '1';
+      rb.innerHTML = '▶ Replay';
+      rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
+
+      // Auto-play on arrival. Cancel any browser TTS that may have started.
+      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(_) {}
+      audio.play().catch(err => {
+        // Autoplay blocked (some browsers) — fall back to browser TTS so user hears the reply.
+        autoplayFailed = true;
+        speakNow(clean);
+      });
+    }).catch(() => {
+      clearTimeout(fallbackTimer);
+      speakNow(clean);
+      rb.remove();
+    });
 
   } catch(e) {
     loading.className = 'bub bot';
