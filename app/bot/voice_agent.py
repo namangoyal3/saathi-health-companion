@@ -15,6 +15,7 @@ from telegram.ext import ContextTypes
 from app.bot import db
 from app.config import settings
 from app.llm.chat import llm_chat
+from app.llm.emergency import emergency_reply, is_emergency
 from app.llm.groq_stt import transcribe
 
 # Strong refs to background tasks so the event loop doesn't GC them mid-flight.
@@ -212,6 +213,17 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not user_text:
         return
 
+    # Deterministic emergency guard — short-circuit BEFORE calling the LLM.
+    # Free-tier models drift off the prompt's emergency rule; regex never does.
+    if is_emergency(user_text):
+        log.warning("bot_emergency_triggered chat_id=%s text=%r", chat_id, user_text[:120])
+        profile = await db.get_profile(chat_id)
+        lang = str((profile or {}).get("language") or "en")
+        reply = emergency_reply(lang)
+        await update.message.reply_text(reply)
+        _spawn_background(_send_voice_async(context, chat_id, reply))
+        return
+
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
 
     reply = await _generate_reply(chat_id, user_text)
@@ -262,6 +274,16 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Quote-reply with the transcription so the user knows what we heard
     await update.message.reply_text(f"🎙 _{transcript}_", parse_mode="Markdown")
+
+    # Emergency guard on the transcribed text — same safety net as text input
+    if is_emergency(transcript):
+        log.warning("bot_voice_emergency_triggered chat_id=%s text=%r", chat_id, transcript[:120])
+        profile = await db.get_profile(chat_id)
+        lang = str((profile or {}).get("language") or "en")
+        reply = emergency_reply(lang)
+        await update.message.reply_text(reply)
+        _spawn_background(_send_voice_async(context, chat_id, reply))
+        return
 
     reply = await _generate_reply(chat_id, transcript)
     await update.message.reply_text(reply)

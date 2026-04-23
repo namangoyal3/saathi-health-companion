@@ -10,10 +10,11 @@ from app.config import settings
 
 log = logging.getLogger(__name__)
 
-# Tried in order; first success wins. openrouter/free auto-routes to whatever
-# provider is available, making it the most resilient primary choice.
+# Tried in order; first success wins.
+# NOTE: "openrouter/free" is NOT a valid model id on OpenRouter — it was
+# returning HTTP 400 for every request. Removed per discovery in
+# auraCodesKM/sath_claude commit 8d5d170.
 _FALLBACK_MODELS = [
-    "openrouter/free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "google/gemma-3-27b-it:free",
     "qwen/qwen3-next-80b-a3b-instruct:free",
@@ -21,6 +22,7 @@ _FALLBACK_MODELS = [
     "z-ai/glm-4.5-air:free",
     "openai/gpt-oss-120b:free",
     "nvidia/nemotron-nano-9b-v2:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
     "liquid/lfm-2.5-1.2b-instruct:free",
 ]
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import re
 import uuid
 
 import asyncpg
@@ -15,6 +14,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.llm.chat import llm_chat
+from app.llm.emergency import emergency_reply, is_emergency
 from app.llm.groq_stt import transcribe
 
 LAKSHMI_SENIOR_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -94,33 +94,15 @@ async def _recent_vitals_for_lakshmi() -> str:
     )
 
 
-# Python-level emergency guard. If the user reports any of these, we reply
-# with the 112 message IMMEDIATELY and never call the LLM — free-tier models
-# routinely ignore system-prompt safety rules. Matches whole words only to
-# avoid false positives like "I have no chest pain".
-_EMERGENCY_PATTERNS = [
-    r"\bchest pain\b",
-    r"\bsevere (?:breathlessness|shortness of breath)\b",
-    r"\bcan'?t breathe\b",
-    r"\bstroke\b",
-    r"\bfainted?\b",
-    r"\bunconscious\b",
-    r"\bseizure\b",
-    r"\bsuicid(?:e|al)\b",
-    r"\bbleeding heavily\b",
-]
-_EMERGENCY_RE = re.compile("|".join(_EMERGENCY_PATTERNS), re.IGNORECASE)
-_EMERGENCY_REPLY = (
-    "Please call emergency services at 112 immediately. "
-    "If someone is with you, ask them to help you call."
-)
+# Emergency guard moved to app.llm.emergency so the Telegram voice_agent
+# and /chat share a single source of truth for emergency phrase matching.
 
 
 @router.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
-    if _EMERGENCY_RE.search(req.message or ""):
+    if is_emergency(req.message or ""):
         log.warning("chat_emergency_triggered text=%r", req.message[:120])
-        return ChatResponse(text=_EMERGENCY_REPLY)
+        return ChatResponse(text=emergency_reply("en"))
 
     system = _SYSTEM + await _recent_vitals_for_lakshmi()
     try:
