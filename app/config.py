@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
 
+    # IVR (Day 3)
+    app_base_url: str = "http://localhost:8080"
+    exotel_webhook_secret: str = "change-me-ivr-webhook-secret"
+    sarvam_api_key: str = ""
+    google_application_credentials: str = ""
+
+    # Wearable (Day 3)
+    wearable_hmac_secret: str = "change-me-wearable-hmac-secret"
+
     # Storage (Day 4)
     r2_account_id: str = ""
     r2_access_key_id: str = ""

@@ -29,6 +29,7 @@ dependencies = [
     "boto3>=1.42.94",
     "langfuse>=4.5.0",
     "python-multipart>=0.0.26",
+    "jinja2>=3.1.6",
 ]
 
 [dependency-groups]

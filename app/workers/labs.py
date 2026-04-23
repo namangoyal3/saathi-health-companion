@@ -8,7 +8,7 @@ import logging
 import tempfile
 import uuid
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import asyncpg
 import boto3
@@ -20,7 +20,7 @@ from app.labs.vision import parse_lab_pdf
 log = logging.getLogger(__name__)
 
 
-def _r2_client() -> boto3.client:  # type: ignore[type-arg]
+def _r2_client() -> Any:
     return boto3.client(
         "s3",
         endpoint_url=f"https://{settings.r2_account_id}.r2.cloudflarestorage.com",
@@ -41,7 +41,7 @@ async def process_lab_pdf(
     Accepts either an R2 object key or a local file path (dev mode).
     Emits NOTIFY lab_parsed on completion so listeners can fan-out.
     """
-    conn: asyncpg.Connection = await asyncpg.connect(  # type: ignore[assignment]
+    conn: asyncpg.Connection = await asyncpg.connect(
         dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
     )
 

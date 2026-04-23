@@ -14,7 +14,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Update
 
+from app.api.ivr import router as ivr_router
 from app.api.labs import router as labs_router
+from app.api.wearable import router as wearable_router
 from app.bot import db as bot_db
 from app.bot.application import build_application
 from app.bot.scheduler import schedule_all_on_startup
@@ -71,6 +73,8 @@ app.add_middleware(
 )
 
 app.include_router(labs_router)
+app.include_router(ivr_router)
+app.include_router(wearable_router)
 
 
 def _git_sha() -> str:
