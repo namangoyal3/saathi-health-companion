@@ -43,6 +43,7 @@ def upgrade() -> None:
         sa.Column("relationship_label", sa.String(50), nullable=False),
         sa.Column("consent_matrix", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("senior_id", "guardian_id", name="uq_care_relationship_pair"),
     )
 
     op.create_table(
@@ -58,6 +59,7 @@ def upgrade() -> None:
         sa.Column("prescriber", sa.Text),
         sa.Column("notes", JSONB),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("senior_id", "name", name="uq_medication_senior_name"),
     )
 
     op.create_table(
@@ -87,6 +89,7 @@ def upgrade() -> None:
         sa.Column("mean_confidence", sa.Numeric(4, 3)),
         sa.Column("extraction_method", sa.String(30)),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("senior_id", "panel_date", name="uq_lab_panel_senior_date"),
     )
 
     op.create_table(
@@ -99,6 +102,7 @@ def upgrade() -> None:
         sa.Column("unit", sa.String(30)),
         sa.Column("reference_range", sa.String(50)),
         sa.Column("confidence", sa.Numeric(4, 3)),
+        sa.UniqueConstraint("lab_panel_id", "biomarker", name="uq_lab_biomarker_panel_name"),
     )
     op.create_index(
         "ix_lab_biomarker_panel_biomarker",
@@ -135,6 +139,7 @@ def upgrade() -> None:
         sa.Column("intent", sa.String(50)),
         sa.Column("parsed_symptom", sa.Text),
         sa.Column("received_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("senior_id", "received_at", "parsed_symptom", name="uq_telegram_inbound_symptom"),
     )
 
     op.create_table(

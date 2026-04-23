@@ -58,6 +58,9 @@ class AppUser(Base):
 
 class CareRelationship(Base):
     __tablename__ = "care_relationship"
+    __table_args__ = (
+        sa.UniqueConstraint("senior_id", "guardian_id", name="uq_care_relationship_pair"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -88,6 +91,7 @@ class CareRelationship(Base):
 
 class Medication(Base):
     __tablename__ = "medication"
+    __table_args__ = (sa.UniqueConstraint("senior_id", "name", name="uq_medication_senior_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -144,6 +148,9 @@ class MedReminderEvent(Base):
 
 class LabPanel(Base):
     __tablename__ = "lab_panel"
+    __table_args__ = (
+        sa.UniqueConstraint("senior_id", "panel_date", name="uq_lab_panel_senior_date"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -169,7 +176,10 @@ class LabPanel(Base):
 
 class LabBiomarker(Base):
     __tablename__ = "lab_biomarker"
-    __table_args__ = (sa.Index("ix_lab_biomarker_panel_biomarker", "lab_panel_id", "biomarker"),)
+    __table_args__ = (
+        sa.UniqueConstraint("lab_panel_id", "biomarker", name="uq_lab_biomarker_panel_name"),
+        sa.Index("ix_lab_biomarker_panel_biomarker", "lab_panel_id", "biomarker"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -222,6 +232,11 @@ class IVRCallLog(Base):
 
 class TelegramInbound(Base):
     __tablename__ = "telegram_inbound"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "senior_id", "received_at", "parsed_symptom", name="uq_telegram_inbound_symptom"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

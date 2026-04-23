@@ -129,7 +129,7 @@ async def _upsert_relationship(
         """
         INSERT INTO care_relationship (senior_id, guardian_id, relationship_label, consent_matrix)
         VALUES ($1, $2, $3, $4::jsonb)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT ON CONSTRAINT uq_care_relationship_pair DO NOTHING
         """,
         senior_id,
         guardian_id,
@@ -150,7 +150,7 @@ async def _upsert_medication(
         """
         INSERT INTO medication (senior_id, name, dose_mg, frequency_rrule, route, start_date, prescriber)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT ON CONSTRAINT uq_medication_senior_name DO NOTHING
         """,
         senior_id,
         med.name,
@@ -174,7 +174,7 @@ async def _upsert_lab_panel(
         """
         INSERT INTO lab_panel (senior_id, panel_date, lab_chain)
         VALUES ($1, $2, $3)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT ON CONSTRAINT uq_lab_panel_senior_date DO NOTHING
         RETURNING id
         """,
         senior_id,
@@ -203,7 +203,7 @@ async def _upsert_biomarker(
         """
         INSERT INTO lab_biomarker (lab_panel_id, biomarker, value, unit, reference_range)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT ON CONSTRAINT uq_lab_biomarker_panel_name DO NOTHING
         """,
         panel_id,
         bm.name,
@@ -230,7 +230,7 @@ async def _upsert_symptom(
         """
         INSERT INTO telegram_inbound (senior_id, raw_text, message_type, source, intent, parsed_symptom, received_at)
         VALUES ($1, $2, 'text', $3, 'symptom_report', $4, $5)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT ON CONSTRAINT uq_telegram_inbound_symptom DO NOTHING
         """,
         senior_id,
         symptom.raw_text,
