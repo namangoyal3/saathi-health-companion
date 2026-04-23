@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saath — Admin Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1c;
+      color: #e2e8f0;
+      padding: 1.5rem 2rem;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #f1f5f9; }
+    header .subtitle { color: #64748b; font-size: .82rem; }
+    header .polling { color: #334155; font-size: .75rem; }
+    header .polling.live { color: #10b981; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+    }
+    .card {
+      background: #121826;
+      border: 1px solid #1e2a44;
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      min-height: 120px;
+    }
+    .card h2 {
+      font-size: .72rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card h2 .count {
+      background: #1e293b;
+      color: #cbd5e1;
+      padding: .12rem .5rem;
+      border-radius: 10px;
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    /* Health dots */
+    .health-list { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem .75rem; font-size: .8rem; }
+    .health-row { display: flex; justify-content: space-between; align-items: center; }
+    .dot {
+      display: inline-block;
+      width: .6rem; height: .6rem; border-radius: 50%;
+      vertical-align: middle; margin-right: .4rem;
+    }
+    .dot.ok { background: #10b981; box-shadow: 0 0 6px #10b981aa; }
+    .dot.warn { background: #f59e0b; }
+    .dot.err { background: #ef4444; }
+    .dot.unknown { background: #475569; }
+    .health-val { color: #94a3b8; font-family: monospace; font-size: .72rem; }
+
+    /* Quick links */
+    .links { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .link-btn {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .55rem .8rem;
+      background: #0a0f1c; border: 1px solid #1e2a44; border-radius: 7px;
+      color: #e2e8f0; text-decoration: none;
+      font-size: .82rem; font-weight: 500;
+      transition: all .15s;
+    }
+    .link-btn:hover { border-color: #6366f1; background: #1e1b4b; }
+    .link-btn .icon { font-size: 1rem; }
+    .link-btn .path { color: #64748b; font-family: monospace; font-size: .7rem; margin-left: auto; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th {
+      text-align: left; padding: .4rem .5rem;
+      color: #64748b; font-weight: 600; font-size: .7rem;
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid #1e2a44;
+    }
+    td {
+      padding: .45rem .5rem; color: #cbd5e1;
+      border-bottom: 1px solid #0f172a;
+    }
+    tr:hover td { background: #0f172a; }
+    td.mono { font-family: monospace; font-size: .74rem; }
+    td.num { text-align: right; font-family: monospace; }
+    td.narrative { color: #94a3b8; max-width: 340px; }
+
+    /* Severity pill */
+    .pill {
+      display: inline-block; padding: .1rem .5rem;
+      border-radius: 4px; font-size: .65rem;
+      font-weight: 700; letter-spacing: .05em;
+    }
+    .pill.URGENT { background: #7f1d1d; color: #fca5a5; }
+    .pill.HIGH   { background: #7c2d12; color: #fdba74; }
+    .pill.MEDIUM { background: #1e3a5f; color: #93c5fd; }
+    .pill.LOW    { background: #1f2937; color: #9ca3af; }
+    .alerted { color: #10b981; margin-left: .4rem; font-size: .7rem; }
+
+    /* Chat viewer */
+    .chat-controls { display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; align-items: center; }
+    .chat-controls input {
+      background: #0a0f1c; border: 1px solid #1e2a44; color: #e2e8f0;
+      padding: .4rem .6rem; border-radius: 6px; font-family: monospace;
+      font-size: .78rem; min-width: 220px;
+    }
+    .chat-controls button {
+      background: #312e81; border: 1px solid #4338ca; color: #e0e7ff;
+      padding: .4rem .9rem; border-radius: 6px; cursor: pointer;
+      font-size: .78rem; font-weight: 600;
+    }
+    .chat-controls button:hover { background: #4338ca; }
+    .chat-controls select {
+      background: #0a0f1c; border: 1px solid #1e2a44; color: #e2e8f0;
+      padding: .4rem .6rem; border-radius: 6px; font-size: .78rem;
+    }
+    .chat-viewer { max-height: 500px; overflow-y: auto; padding: .5rem; background: #0a0f1c; border-radius: 8px; border: 1px solid #1e2a44; }
+    .turn { padding: .55rem .75rem; border-radius: 8px; margin-bottom: .5rem; max-width: 88%; }
+    .turn.user { background: #1e293b; margin-left: auto; border: 1px solid #334155; }
+    .turn.assistant { background: #1e1b4b; border: 1px solid #312e81; }
+    .turn .meta { font-size: .65rem; color: #64748b; margin-bottom: .2rem; text-transform: uppercase; letter-spacing: .05em; }
+    .turn .content { font-size: .85rem; line-height: 1.45; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .empty { color: #475569; font-size: .8rem; padding: 1.5rem; text-align: center; }
+
+    code { font-family: monospace; background: #1e2a44; padding: 0 .3rem; border-radius: 3px; font-size: .78rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🩺 Saath — Admin Dashboard</h1>
+      <div class="subtitle">Live system overview · every endpoint · every user · every anomaly</div>
+    </div>
+    <div class="polling" id="poll">initializing…</div>
+  </header>
+
+  <div class="grid">
+    <!-- Row 1: Health + Links -->
+    <div class="card span-4">
+      <h2>System Health <span class="count" id="ts">—</span></h2>
+      <div class="health-list" id="health"></div>
+    </div>
+
+    <div class="card span-4">
+      <h2>Quick Links</h2>
+      <div class="links">
+        <a class="link-btn" href="/vitals-simulator" target="_blank">
+          <span class="icon">⌚</span>Watch Simulator<span class="path">/vitals-simulator</span>
+        </a>
+        <a class="link-btn" href="/" target="_blank">
+          <span class="icon">💬</span>Lakshmi Chat<span class="path">/</span>
+        </a>
+        <a class="link-btn" href="/docs" target="_blank">
+          <span class="icon">📚</span>API Docs<span class="path">/docs</span>
+        </a>
+        <a class="link-btn" href="/health" target="_blank">
+          <span class="icon">❤️</span>Health JSON<span class="path">/health</span>
+        </a>
+        <a class="link-btn" href="/api/admin/state" target="_blank">
+          <span class="icon">📊</span>Admin State<span class="path">/api/admin/state</span>
+        </a>
+        <a class="link-btn" href="https://github.com/namangoyal3/saathi-health-companion" target="_blank">
+          <span class="icon">🐙</span>Repo<span class="path">github</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="card span-4">
+      <h2>Agent Flags · Last 7d <span class="count" id="flag-total">0</span></h2>
+      <div id="flag-counts" style="font-size:.85rem;color:#cbd5e1;line-height:2"></div>
+    </div>
+
+    <!-- Row 2: Profiles -->
+    <div class="card span-6">
+      <h2>Bot Profiles (Telegram Users) <span class="count" id="profiles-count">0</span></h2>
+      <table id="profiles-table">
+        <thead><tr>
+          <th>chat_id</th><th>Name</th><th>Lang</th><th>Family</th><th>Chat</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card span-6">
+      <h2>App Users (Senior/Guardian rows) <span class="count" id="users-count">0</span></h2>
+      <table id="users-table">
+        <thead><tr>
+          <th>Role</th><th>Name</th><th>Lang</th><th>TG chat_id</th><th>UUID</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Row 3: Vitals -->
+    <div class="card span-8">
+      <h2>Recent Vitals Anomalies <span class="count" id="anomalies-count">0</span></h2>
+      <table id="anomalies-table">
+        <thead><tr>
+          <th>When</th><th>Senior</th><th>Marker</th><th>Severity</th><th>Value</th><th>Narrative</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card span-4">
+      <h2>Wearable Daily Summaries <span class="count" id="summaries-count">0</span></h2>
+      <table id="summaries-table">
+        <thead><tr>
+          <th>Date</th><th>Senior</th><th>HR</th><th>SpO₂</th><th>Steps</th><th>Sleep</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Row 4: Chat viewer -->
+    <div class="card span-12">
+      <h2>Conversation Viewer · <span style="color:#94a3b8;text-transform:none;letter-spacing:0">Read any Telegram chat history (pick Priya / Lakshmi / any chat_id)</span></h2>
+      <div class="chat-controls">
+        <label style="color:#94a3b8;font-size:.8rem">chat_id:</label>
+        <input id="chat-id" placeholder="e.g. 123456789" type="text">
+        <button onclick="loadChat()">Load</button>
+        <select id="chat-picker" onchange="pickChat(this.value)">
+          <option value="">— quick-pick a profile —</option>
+        </select>
+        <span id="chat-meta" style="color:#64748b;font-size:.78rem;margin-left:.5rem"></span>
+      </div>
+      <div class="chat-viewer" id="chat-viewer">
+        <div class="empty">Enter a chat_id or pick a profile to view the conversation.</div>
+      </div>
+    </div>
+
+    <!-- Row 5: Telegram inbound -->
+    <div class="card span-12">
+      <h2>Recent Telegram Inbound (app_user-level) <span class="count" id="telegram-count">0</span></h2>
+      <table id="telegram-table">
+        <thead><tr>
+          <th>When</th><th>Senior</th><th>Type</th><th>Intent</th><th>Parsed</th><th>Raw</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+let currentChat = null;
+
+function dotClass(v) {
+  if (v === true || v === 'ok') return 'ok';
+  if (typeof v === 'string' && v.startsWith('down')) return 'err';
+  if (typeof v === 'string' && v.startsWith('partial')) return 'warn';
+  if (v === false) return 'err';
+  if (v === 'unknown' || v === null) return 'unknown';
+  if (typeof v === 'number') return v >= 200 && v < 300 ? 'ok' : 'err';
+  return 'unknown';
+}
+function valStr(v) {
+  if (v === true) return 'configured';
+  if (v === false) return 'missing';
+  return v === null ? '—' : String(v);
+}
+
+function renderHealth(h) {
+  const order = ['db','redis','alembic_revision','self_health_http',
+                 'nvidia_key','openrouter_key','anthropic_key',
+                 'telegram_bot_token','elevenlabs_key','groq_key','wearable_hmac_configured'];
+  const labels = {
+    db:'PostgreSQL', redis:'Redis', alembic_revision:'Migration',
+    self_health_http:'Self /health',
+    nvidia_key:'NVIDIA', openrouter_key:'OpenRouter', anthropic_key:'Anthropic',
+    telegram_bot_token:'Telegram Bot', elevenlabs_key:'ElevenLabs', groq_key:'Groq STT',
+    wearable_hmac_configured:'Wearable HMAC',
+  };
+  const html = order.map(k => {
+    const v = h[k];
+    const cls = k === 'alembic_revision' ? (v ? 'ok' : 'unknown') : dotClass(v);
+    return `<div class="health-row"><span><span class="dot ${cls}"></span>${labels[k]||k}</span><span class="health-val">${valStr(v)}</span></div>`;
+  }).join('');
+  document.getElementById('health').innerHTML = html;
+}
+
+function renderFlagCounts(counts) {
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  document.getElementById('flag-total').textContent = total;
+  const order = ['URGENT','HIGH','MEDIUM','LOW'];
+  const html = order.filter(s => counts[s]).map(s =>
+    `<div><span class="pill ${s}">${s}</span> <span style="color:#94a3b8">${counts[s]}</span></div>`
+  ).join('') || '<div style="color:#475569;font-size:.8rem">No flags in last 7 days.</div>';
+  document.getElementById('flag-counts').innerHTML = html;
+}
+
+function renderProfiles(profiles) {
+  document.getElementById('profiles-count').textContent = profiles.length;
+  const tbody = document.querySelector('#profiles-table tbody');
+  tbody.innerHTML = profiles.map(p => `
+    <tr>
+      <td class="mono">${p.chat_id}</td>
+      <td>${p.name || '—'}</td>
+      <td>${p.language}</td>
+      <td class="mono">${p.family_chat_id || '—'}</td>
+      <td><a href="#" onclick="loadChatId(${p.chat_id});return false" style="color:#818cf8">view ↗</a></td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">No profiles yet.</td></tr>';
+
+  // populate picker
+  const picker = document.getElementById('chat-picker');
+  const current = picker.value;
+  picker.innerHTML = '<option value="">— quick-pick a profile —</option>' +
+    profiles.map(p => `<option value="${p.chat_id}">${p.name || 'Unnamed'} · ${p.chat_id}</option>`).join('');
+  picker.value = current;
+}
+
+function renderUsers(users) {
+  document.getElementById('users-count').textContent = users.length;
+  const tbody = document.querySelector('#users-table tbody');
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><span class="pill ${u.role==='senior'?'MEDIUM':'LOW'}">${u.role}</span></td>
+      <td>${u.full_name}</td>
+      <td>${u.language}</td>
+      <td class="mono">${u.telegram_chat_id || '—'}</td>
+      <td class="mono" style="font-size:.68rem">${u.id.slice(0,8)}…</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">No users.</td></tr>';
+}
+
+function renderAnomalies(rows) {
+  document.getElementById('anomalies-count').textContent = rows.length;
+  const tbody = document.querySelector('#anomalies-table tbody');
+  tbody.innerHTML = rows.map(r => {
+    const ts = new Date(r.created_at);
+    const timeStr = ts.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    return `
+    <tr>
+      <td class="mono" style="font-size:.7rem">${timeStr}</td>
+      <td>${r.senior_name}</td>
+      <td class="mono">${r.marker}</td>
+      <td><span class="pill ${r.severity}">${r.severity}</span>${r.alerted ? '<span class="alerted">✓alerted</span>' : ''}</td>
+      <td class="num">${r.value}<span style="color:#475569"> / ${r.threshold}</span></td>
+      <td class="narrative">${r.narrative}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="empty">No anomalies detected yet. Send a scenario in the <a href="/vitals-simulator" style="color:#818cf8">watch simulator</a>.</td></tr>';
+}
+
+function renderSummaries(rows) {
+  document.getElementById('summaries-count').textContent = rows.length;
+  const tbody = document.querySelector('#summaries-table tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="mono">${r.date}</td>
+      <td>${r.senior_name}</td>
+      <td class="num">${r.avg_heart_rate ?? '—'}</td>
+      <td class="num">${r.avg_spo2_pct ?? '—'}</td>
+      <td class="num">${r.steps ?? '—'}</td>
+      <td class="num">${r.sleep_minutes ? Math.round(r.sleep_minutes/60*10)/10 + 'h' : '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">No wearable summaries yet.</td></tr>';
+}
+
+function renderTelegram(rows) {
+  document.getElementById('telegram-count').textContent = rows.length;
+  const tbody = document.querySelector('#telegram-table tbody');
+  tbody.innerHTML = rows.map(r => {
+    const ts = new Date(r.received_at);
+    return `
+    <tr>
+      <td class="mono" style="font-size:.7rem">${ts.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
+      <td>${r.senior_name}</td>
+      <td>${r.message_type}</td>
+      <td>${r.intent || '—'}</td>
+      <td style="color:#94a3b8">${r.parsed_symptom || '—'}</td>
+      <td class="narrative">${r.raw_text || '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="empty">No Telegram inbound recorded yet.</td></tr>';
+}
+
+function loadChatId(id) {
+  document.getElementById('chat-id').value = id;
+  loadChat();
+}
+function pickChat(id) {
+  if (!id) return;
+  loadChatId(id);
+}
+
+async function loadChat() {
+  const id = document.getElementById('chat-id').value.trim();
+  if (!id || isNaN(id)) {
+    document.getElementById('chat-viewer').innerHTML = '<div class="empty">Enter a numeric chat_id.</div>';
+    return;
+  }
+  currentChat = id;
+  try {
+    const res = await fetch(`/api/admin/chat/${id}?limit=40`);
+    const data = await res.json();
+    const meta = data.profile
+      ? `${data.profile.name || '—'} · ${data.profile.language} · ${data.turns.length} turns`
+      : `Unknown chat · ${data.turns.length} turns`;
+    document.getElementById('chat-meta').textContent = meta;
+
+    const viewer = document.getElementById('chat-viewer');
+    if (!data.turns.length) {
+      viewer.innerHTML = '<div class="empty">No conversation history for this chat_id.</div>';
+      return;
+    }
+    viewer.innerHTML = data.turns.map(t => `
+      <div class="turn ${t.role}">
+        <div class="meta">${t.role} · ${new Date(t.created_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+        <div class="content">${escapeHtml(t.content)}</div>
+      </div>`).join('');
+    viewer.scrollTop = viewer.scrollHeight;
+  } catch (e) {
+    document.getElementById('chat-viewer').innerHTML = `<div class="empty">Error loading chat: ${e.message}</div>`;
+  }
+}
+
+function escapeHtml(s) {
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/admin/state');
+    const d = await res.json();
+    document.getElementById('poll').textContent = 'live ● ' + new Date().toLocaleTimeString();
+    document.getElementById('poll').classList.add('live');
+    document.getElementById('ts').textContent = new Date(d.timestamp).toLocaleTimeString();
+    renderHealth(d.health);
+    renderFlagCounts(d.agent_flag_counts);
+    renderProfiles(d.profiles);
+    renderUsers(d.app_users);
+    renderAnomalies(d.recent_anomalies);
+    renderSummaries(d.recent_summaries);
+    renderTelegram(d.recent_telegram_in);
+    if (currentChat) loadChat();  // keep the open chat fresh
+  } catch (e) {
+    document.getElementById('poll').textContent = 'offline ✕';
+    document.getElementById('poll').classList.remove('live');
+  }
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
