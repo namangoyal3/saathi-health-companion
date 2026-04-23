@@ -25,18 +25,21 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-echo "=== 1. unlink any prior project binding ==="
-railway unlink --yes 2>/dev/null || true
+# echo "=== 1. unlink any prior project binding ==="
+# railway unlink --yes 2>/dev/null || true
 
-echo ""
-echo "=== 2. create or link project: $PROJECT_NAME ==="
-echo "(if a project with this name already exists, run: railway link --project $PROJECT_NAME)"
-railway init --name "$PROJECT_NAME"
+# echo ""
+# echo "=== 2. create or link project: $PROJECT_NAME ==="
+# railway link --project "$PROJECT_NAME" || railway init --name "$PROJECT_NAME" --workspace "neuralnextgen's Projects"
 
 echo ""
 echo "=== 3. provision Postgres + Redis (idempotent if already present) ==="
 railway add --database postgres || true
 railway add --database redis    || true
+
+echo ""
+echo "=== 3.5 link service ==="
+railway service link "$PROJECT_NAME" || true
 
 echo ""
 echo "=== 4. import env vars from $ENV_FILE (skipping DATABASE_URL and REDIS_URL) ==="
@@ -50,17 +53,21 @@ while IFS= read -r line || [ -n "$line" ]; do
   # must look like KEY=VALUE
   case "$line" in *=*) : ;; *) continue ;; esac
   key="${line%%=*}"
+  val="${line#*=}"
+  if [ -z "$val" ]; then
+    continue
+  fi
   # skip DATABASE_URL / REDIS_URL — Railway's managed plugins provide them
   case "$key" in DATABASE_URL|REDIS_URL) continue ;; esac
   echo "  → setting $key"
-  railway variables --set "$line" >/dev/null
+  railway variables --skip-deploys --set "$line" >/dev/null
 done < "$ENV_FILE"
 
 echo ""
 echo "=== 5. explicit refs to Postgres + Redis managed URLs ==="
-railway variables --set 'DATABASE_URL=${{Postgres.DATABASE_URL}}' >/dev/null || \
-  railway variables --set 'DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}' >/dev/null || true
-railway variables --set 'REDIS_URL=${{Redis.REDIS_URL}}' >/dev/null || true
+railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_URL}}' >/dev/null || \
+  railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}' >/dev/null || true
+railway variables --skip-deploys --set 'REDIS_URL=${{Redis.REDIS_URL}}' >/dev/null || true
 
 echo ""
 echo "=== 6. deploy ==="
