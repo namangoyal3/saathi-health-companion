@@ -6,243 +6,313 @@
   <title>Saath — Unified Workspace</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; }
+    html, body { height: 100vh; overflow: hidden; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #0a0f1c;
       color: #e2e8f0;
       display: grid;
-      grid-template-rows: 58px 1fr 220px;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background-color: #1e2a44;   /* acts as border between tiles */
+      grid-template-rows: 54px 1fr;
+      grid-template-columns: 1fr;
     }
 
-    /* ─── TOP BAR ───────────────────────────────── */
+    /* ── TOP BAR ─────────────────────────────────────── */
     .topbar {
-      grid-column: 1 / -1;
       background: #0a0f1c;
+      border-bottom: 1px solid #1e2a44;
       display: flex; align-items: center; gap: 1rem;
       padding: 0 1rem;
-      border-bottom: 1px solid #1e2a44;
+      overflow-x: auto;
     }
     .topbar h1 {
-      font-size: 1rem; font-weight: 700; color: #f1f5f9;
-      display: flex; align-items: center; gap: .4rem;
-      margin-right: 1rem;
+      font-size: .95rem; font-weight: 700; color: #f1f5f9;
+      white-space: nowrap;
+      display: flex; align-items: center; gap: .35rem;
     }
-    .topbar h1 .sub { color: #64748b; font-weight: 400; font-size: .75rem; margin-left: .4rem; }
-    .health-chips { display: flex; gap: .4rem; flex: 1; flex-wrap: wrap; }
+    .topbar h1 .sub { color: #64748b; font-weight: 400; font-size: .7rem; }
+    .chips { display: flex; gap: .35rem; flex-wrap: nowrap; }
     .chip {
-      font-size: .68rem; padding: .18rem .55rem;
+      font-size: .65rem; padding: .15rem .5rem;
       background: #121826; border: 1px solid #1e2a44; border-radius: 12px;
-      color: #cbd5e1; font-weight: 500;
-      display: inline-flex; align-items: center; gap: .35rem;
+      color: #cbd5e1; font-weight: 500; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: .3rem;
     }
     .chip.ok  { border-color: #064e3b; color: #6ee7b7; }
     .chip.err { border-color: #991b1b; color: #fca5a5; }
     .chip.warn{ border-color: #78350f; color: #fbbf24; }
-    .chip .dot { width: .45rem; height: .45rem; border-radius: 50%; }
+    .chip .dot { width: .4rem; height: .4rem; border-radius: 50%; flex-shrink: 0; }
     .chip.ok  .dot { background: #10b981; }
     .chip.err .dot { background: #ef4444; }
     .chip.warn .dot { background: #f59e0b; }
-    .scenario-btns { display: flex; gap: .35rem; }
+    .scenario-btns { display: flex; gap: .3rem; margin-left: auto; flex-shrink: 0; }
     .sbtn {
       background: #1e1b4b; border: 1px solid #4338ca; color: #c7d2fe;
-      font-size: .7rem; padding: .3rem .65rem; border-radius: 6px;
-      cursor: pointer; font-weight: 600;
+      font-size: .68rem; padding: .28rem .6rem; border-radius: 5px;
+      cursor: pointer; font-weight: 600; white-space: nowrap;
     }
     .sbtn:hover { background: #312e81; }
-    .sbtn.red { border-color: #7f1d1d; color: #fecaca; background: #450a0a; }
-    .sbtn.red:hover { background: #7f1d1d; }
     .sbtn.green { border-color: #065f46; color: #6ee7b7; background: #022c22; }
     .sbtn.green:hover { background: #064e3b; }
-    .poll { color: #334155; font-size: .72rem; font-family: monospace; }
+    .sbtn.red { border-color: #7f1d1d; color: #fecaca; background: #450a0a; }
+    .sbtn.red:hover { background: #7f1d1d; }
+    .poll { color: #334155; font-size: .7rem; font-family: monospace; white-space: nowrap; }
     .poll.live { color: #10b981; }
 
-    /* ─── TILES ─────────────────────────────────── */
-    .tile {
+    /* ── MAIN GRID (3 columns) ───────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr 380px;
+      gap: 1px;
+      background: #1e2a44;
+      overflow: hidden;
+      min-height: 0;
+    }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr 1fr; }
+      .sidebar { display: none; }  /* fallback: hide sidebar on narrow */
+    }
+    @media (max-width: 720px) {
+      .main { grid-template-columns: 1fr; }
+      .pane.lakshmi { display: none; }
+    }
+
+    .pane {
       background: #121826;
       display: flex; flex-direction: column;
-      overflow: hidden;
-      min-height: 0;  /* allow flex children to shrink */
+      overflow: hidden; min-height: 0;
     }
-    .tile-head {
-      padding: .55rem .9rem;
+    .pane-head {
+      padding: .55rem .85rem;
       background: #0a0f1c;
       border-bottom: 1px solid #1e2a44;
       display: flex; align-items: center; justify-content: space-between;
-      font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
-      color: #94a3b8;
       flex-shrink: 0;
     }
-    .tile-head .tabs { display: flex; gap: 0; }
-    .tile-head .tab {
-      background: transparent; border: none; color: #64748b;
-      font-size: .7rem; font-weight: 600; padding: .2rem .7rem;
-      cursor: pointer; border-radius: 4px;
-      text-transform: none; letter-spacing: 0;
+    .pane-head .title {
+      font-size: .72rem; font-weight: 600;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: #94a3b8;
     }
-    .tile-head .tab.active { background: #1e1b4b; color: #c7d2fe; }
-    .tile-head .tab:hover:not(.active) { color: #cbd5e1; }
-    .tile-head .open-ext {
+    .pane-head .open-ext {
       color: #64748b; text-decoration: none; font-size: .7rem;
-      padding: .1rem .4rem; border-radius: 4px;
+      padding: .15rem .45rem; border-radius: 4px;
     }
-    .tile-head .open-ext:hover { color: #818cf8; background: #1e1b4b; }
-
-    .tile iframe {
+    .pane-head .open-ext:hover { color: #818cf8; background: #1e1b4b; }
+    .pane iframe {
       flex: 1; border: none; width: 100%; background: #fff;
       min-height: 0;
     }
-    .tile.dark iframe { background: #0a0f1c; }
 
-    /* ─── DATA PANEL (bottom full-width) ────────── */
-    .data {
-      grid-column: 1 / -1;
+    /* ── SIDEBAR (right column) ──────────────────────── */
+    .sidebar {
       background: #121826;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 1px;
-      background-color: #1e2a44;
-    }
-    .data-col {
-      background: #121826;
-      padding: .55rem .85rem;
-      overflow-y: auto;
+      display: flex; flex-direction: column;
+      overflow: hidden;
       min-height: 0;
     }
-    .data-col h3 {
-      font-size: .68rem; font-weight: 600; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: .05em;
-      margin-bottom: .5rem; display: flex; justify-content: space-between;
+    .sidebar-tabs {
+      display: flex;
+      background: #0a0f1c;
+      border-bottom: 1px solid #1e2a44;
+      flex-shrink: 0;
     }
-    .data-col h3 .count {
+    .stab {
+      flex: 1; background: transparent; border: none; color: #64748b;
+      font-size: .68rem; font-weight: 600; padding: .65rem 0;
+      cursor: pointer; letter-spacing: .03em;
+      border-bottom: 2px solid transparent;
+    }
+    .stab.active { color: #c7d2fe; border-bottom-color: #6366f1; }
+    .stab:hover:not(.active) { color: #cbd5e1; background: #121826; }
+
+    .sidebar-body { flex: 1; overflow-y: auto; padding: .75rem; min-height: 0; }
+    .sidebar-body::-webkit-scrollbar { width: 5px; }
+    .sidebar-body::-webkit-scrollbar-thumb { background: #1e2a44; border-radius: 3px; }
+
+    .section-title {
+      font-size: .65rem; font-weight: 600;
+      color: #64748b; text-transform: uppercase; letter-spacing: .05em;
+      margin: .6rem 0 .4rem; display: flex; justify-content: space-between;
+    }
+    .section-title:first-child { margin-top: 0; }
+    .section-title .count {
       background: #1e1b4b; color: #c7d2fe;
-      padding: .08rem .45rem; border-radius: 10px;
-      font-size: .65rem; text-transform: none; letter-spacing: 0;
+      padding: .08rem .4rem; border-radius: 10px;
+      font-size: .6rem; text-transform: none; letter-spacing: 0;
     }
 
-    /* Anomalies list */
+    /* ── Anomaly cards ───────────────────────────────── */
     .anomaly {
       background: #0a0f1c; border: 1px solid #1e2a44;
-      border-radius: 6px; padding: .4rem .55rem;
-      margin-bottom: .35rem; font-size: .72rem;
+      border-radius: 6px; padding: .5rem .6rem;
+      margin-bottom: .4rem;
     }
     .anomaly .top {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: .2rem;
+      margin-bottom: .25rem; gap: .5rem;
     }
-    .anomaly .narrative { color: #cbd5e1; line-height: 1.4; font-size: .7rem; }
-    .anomaly .ts { color: #475569; font-size: .6rem; font-family: monospace; }
+    .anomaly .narrative {
+      color: #cbd5e1; line-height: 1.45; font-size: .74rem;
+      word-break: break-word;
+    }
+    .anomaly .ts { color: #475569; font-size: .6rem; font-family: monospace; white-space: nowrap; }
+    .anomaly .alerted { color: #10b981; font-size: .65rem; margin-left: .3rem; }
     .pill {
       font-size: .58rem; font-weight: 700; letter-spacing: .05em;
-      padding: .08rem .4rem; border-radius: 3px;
+      padding: .1rem .4rem; border-radius: 3px;
     }
     .pill.URGENT { background: #7f1d1d; color: #fca5a5; }
     .pill.HIGH   { background: #7c2d12; color: #fdba74; }
     .pill.MEDIUM { background: #1e3a5f; color: #93c5fd; }
     .pill.LOW    { background: #1f2937; color: #9ca3af; }
-    .pill.senior { background: #1e3a5f; color: #93c5fd; }
+    .pill.senior   { background: #1e3a5f; color: #93c5fd; }
     .pill.guardian { background: #581c87; color: #d8b4fe; }
 
-    /* Profile rows */
-    .profile, .user-row {
+    /* ── Watch stats grid ────────────────────────────── */
+    .watch-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: .4rem; margin-bottom: .5rem;
+    }
+    .watch-stat {
+      background: #0a0f1c; border: 1px solid #1e2a44;
+      border-radius: 6px; padding: .5rem .6rem;
+    }
+    .watch-stat .k {
+      font-size: .6rem; color: #64748b; text-transform: uppercase;
+      letter-spacing: .05em; margin-bottom: .15rem;
+    }
+    .watch-stat .v { font-size: 1rem; font-weight: 700; font-family: monospace; color: #e2e8f0; }
+    .watch-stat.ok .v { color: #10b981; }
+    .watch-stat.warn .v { color: #f59e0b; }
+    .watch-stat.crit .v { color: #ef4444; }
+
+    /* ── Profile / user rows ─────────────────────────── */
+    .row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: .35rem .4rem; background: #0a0f1c;
+      padding: .35rem .5rem; background: #0a0f1c;
       border: 1px solid #1e2a44; border-radius: 5px;
       margin-bottom: .3rem; font-size: .72rem;
-      cursor: pointer;
     }
-    .profile:hover, .user-row:hover { border-color: #4338ca; }
-    .profile .name, .user-row .name { color: #e2e8f0; font-weight: 500; }
-    .profile .id { font-family: monospace; font-size: .65rem; color: #64748b; }
+    .row .name { color: #e2e8f0; font-weight: 500; }
+    .row .meta { font-family: monospace; font-size: .63rem; color: #64748b; }
 
-    .empty { color: #475569; font-size: .72rem; text-align: center; padding: .75rem; }
-
-    /* Summary strip inside data col */
+    /* ── Flag counts ────────────────────────────────── */
     .mini-stat {
-      display: flex; justify-content: space-between;
-      padding: .25rem 0; font-size: .72rem;
-      border-bottom: 1px solid #1e2a44;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .28rem .35rem; font-size: .72rem;
+      background: #0a0f1c; border-radius: 5px;
+      margin-bottom: .25rem;
     }
-    .mini-stat:last-child { border: none; }
-    .mini-stat .k { color: #64748b; }
     .mini-stat .v { color: #e2e8f0; font-family: monospace; font-weight: 600; }
+
+    /* ── Simulator embed inside sidebar ──────────────── */
+    .sim-embed {
+      flex: 1; border: none; width: 100%; background: #0a0f1c;
+      min-height: 0;
+    }
+
+    .empty { color: #475569; font-size: .72rem; text-align: center; padding: 1.2rem .5rem; }
   </style>
 </head>
 <body>
-  <!-- TOP BAR -->
+  <!-- ── TOP BAR ─────────────────────────────────── -->
   <div class="topbar">
-    <h1>🩺 Saath <span class="sub">unified workspace</span></h1>
-    <div class="health-chips" id="chips"></div>
+    <h1>🩺 Saath <span class="sub">workspace</span></h1>
+    <div class="chips" id="chips"></div>
     <div class="scenario-btns">
       <button class="sbtn green" onclick="sendScenario('normal')">Normal</button>
-      <button class="sbtn" onclick="sendScenario('low_step_fatigue')">Low Step</button>
+      <button class="sbtn" onclick="sendScenario('low_step_fatigue')">Low-step</button>
       <button class="sbtn" onclick="sendScenario('post_med_hr_spike')">HR Spike</button>
       <button class="sbtn red" onclick="sendScenario('spo2_dip')">SpO₂ Dip</button>
       <button class="sbtn red" onclick="sendScenario('dizziness_episode')">Dizziness ⚡</button>
     </div>
-    <span class="poll" id="poll">initializing…</span>
+    <span class="poll" id="poll">init…</span>
   </div>
 
-  <!-- TILE 1: Priya chat -->
-  <div class="tile">
-    <div class="tile-head">
-      <span>👩🏽 Priya (Guardian · San Jose)</span>
-      <a href="/priya" target="_blank" class="open-ext">open ↗</a>
-    </div>
-    <iframe src="/priya"></iframe>
-  </div>
+  <!-- ── MAIN GRID ───────────────────────────────── -->
+  <div class="main">
 
-  <!-- TILE 2: Lakshmi chat -->
-  <div class="tile">
-    <div class="tile-head">
-      <span>👵🏽 Lakshmi (Senior · Bengaluru)</span>
-      <a href="/" target="_blank" class="open-ext">open ↗</a>
+    <!-- COL 1: Priya chat -->
+    <div class="pane">
+      <div class="pane-head">
+        <span class="title">👩🏽 Priya · Guardian</span>
+        <a href="/priya" target="_blank" class="open-ext">open ↗</a>
+      </div>
+      <iframe src="/priya"></iframe>
     </div>
-    <iframe src="/"></iframe>
-  </div>
 
-  <!-- TILE 3: Simulator (bottom-left) -->
-  <div class="tile dark" style="grid-row: 3; grid-column: 1;">
-    <div class="tile-head">
-      <span>⌚ Galaxy Watch Simulator</span>
-      <a href="/vitals-simulator" target="_blank" class="open-ext">open ↗</a>
+    <!-- COL 2: Lakshmi chat -->
+    <div class="pane lakshmi">
+      <div class="pane-head">
+        <span class="title">👵🏽 Lakshmi · Senior</span>
+        <a href="/" target="_blank" class="open-ext">open ↗</a>
+      </div>
+      <iframe src="/"></iframe>
     </div>
-    <iframe src="/vitals-simulator"></iframe>
-  </div>
 
-  <!-- TILE 4: Live data panel (bottom-right — REPLACES the static .data block) -->
-  <div class="data" style="grid-row: 3; grid-column: 2;">
-    <div class="data-col">
-      <h3>Recent Anomalies <span class="count" id="anom-count">0</span></h3>
-      <div id="anom-list"></div>
-    </div>
-    <div class="data-col">
-      <h3>Latest Watch Day <span class="count" id="sum-date">—</span></h3>
-      <div id="latest-summary"></div>
-      <h3 style="margin-top:.9rem">Profiles <span class="count" id="prof-count">0</span></h3>
-      <div id="prof-list"></div>
-    </div>
-    <div class="data-col">
-      <h3>App Users <span class="count" id="user-count">0</span></h3>
-      <div id="user-list"></div>
-      <h3 style="margin-top:.9rem">Agent Flags (7d)</h3>
-      <div id="flag-counts"></div>
+    <!-- COL 3: Sidebar with tabs -->
+    <div class="sidebar">
+      <div class="sidebar-tabs">
+        <button class="stab active" data-tab="live" onclick="showTab('live')">Live Data</button>
+        <button class="stab" data-tab="sim" onclick="showTab('sim')">Simulator</button>
+        <button class="stab" data-tab="dir" onclick="showTab('dir')">Directory</button>
+      </div>
+
+      <!-- Tab: LIVE DATA -->
+      <div class="sidebar-body" id="tab-live">
+        <div class="section-title">
+          Latest Watch Day <span class="count" id="sum-date">—</span>
+        </div>
+        <div class="watch-grid" id="watch-grid"></div>
+
+        <div class="section-title">
+          Recent Anomalies <span class="count" id="anom-count">0</span>
+        </div>
+        <div id="anom-list"></div>
+
+        <div class="section-title" style="margin-top:.8rem">
+          Agent Flags · 7d
+        </div>
+        <div id="flag-counts"></div>
+      </div>
+
+      <!-- Tab: SIMULATOR iframe -->
+      <div class="sidebar-body" id="tab-sim" style="display:none;padding:0;overflow:hidden">
+        <iframe class="sim-embed" src="/vitals-simulator" id="sim-frame"></iframe>
+      </div>
+
+      <!-- Tab: DIRECTORY (profiles, users, links) -->
+      <div class="sidebar-body" id="tab-dir" style="display:none">
+        <div class="section-title">Quick Links</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem;margin-bottom:.6rem">
+          <a class="row" href="/docs" target="_blank" style="text-decoration:none">📚 API Docs</a>
+          <a class="row" href="/health" target="_blank" style="text-decoration:none">❤️ Health JSON</a>
+          <a class="row" href="/api/admin/state" target="_blank" style="text-decoration:none">📊 Admin State</a>
+          <a class="row" href="https://github.com/namangoyal3/saathi-health-companion" target="_blank" style="text-decoration:none">🐙 GitHub</a>
+        </div>
+
+        <div class="section-title">
+          Bot Profiles <span class="count" id="prof-count">0</span>
+        </div>
+        <div id="prof-list"></div>
+
+        <div class="section-title" style="margin-top:.75rem">
+          App Users <span class="count" id="user-count">0</span>
+        </div>
+        <div id="user-list"></div>
+      </div>
     </div>
   </div>
 
 <script>
-// ─── Top-bar health chips ──────────────────────────────
-const HEALTH_ORDER = [
-  ['db',            'DB'],
-  ['redis',         'Redis'],
-  ['alembic_revision','Rev'],
-  ['nvidia_key',    'NVIDIA'],
-  ['openrouter_key','OpenRouter'],
+// ─── Health chips ─────────────────────────────────────
+const HEALTH_CHIPS = [
+  ['db',               'DB'],
+  ['redis',            'Redis'],
+  ['alembic_revision', 'Rev'],
+  ['nvidia_key',       'NVIDIA'],
+  ['openrouter_key',   'OpenRouter'],
   ['telegram_bot_token','TG'],
-  ['anthropic_key', 'Anthropic'],
 ];
 function chipClass(k, v) {
   if (k === 'alembic_revision') return v ? 'ok' : 'warn';
@@ -258,54 +328,82 @@ function chipValue(k, v) {
   return String(v);
 }
 function renderHealth(h) {
-  document.getElementById('chips').innerHTML = HEALTH_ORDER.map(([k, label]) => {
+  document.getElementById('chips').innerHTML = HEALTH_CHIPS.map(([k, label]) => {
     const v = h[k];
-    return `<span class="chip ${chipClass(k,v)}"><span class="dot"></span>${label} <span style="opacity:.6">${chipValue(k,v)}</span></span>`;
+    return `<span class="chip ${chipClass(k,v)}"><span class="dot"></span>${label} <span style="opacity:.65">${chipValue(k,v)}</span></span>`;
   }).join('');
+}
+
+function hrClass(hr) {
+  if (hr == null) return '';
+  if (hr > 105 || hr < 45) return 'crit';
+  if (hr > 95  || hr < 50) return 'warn';
+  return 'ok';
+}
+function spo2Class(p) {
+  if (p == null) return '';
+  if (p < 90) return 'crit';
+  if (p < 95) return 'warn';
+  return 'ok';
+}
+function stepsClass(s) { return s == null ? '' : (s < 2000 ? 'warn' : 'ok'); }
+function sleepClass(m) { return m == null ? '' : (m < 240 ? 'crit' : m < 300 ? 'warn' : 'ok'); }
+
+function renderWatch(summaries) {
+  if (!summaries.length) {
+    document.getElementById('watch-grid').innerHTML = '<div class="empty" style="grid-column:1/-1">No watch data yet. Click a scenario above.</div>';
+    document.getElementById('sum-date').textContent = '—';
+    return;
+  }
+  const s = summaries[0];
+  document.getElementById('sum-date').textContent = s.date;
+  const cells = [
+    ['HR',     s.avg_heart_rate, s.avg_heart_rate ? s.avg_heart_rate + ' bpm' : '—', hrClass(s.avg_heart_rate)],
+    ['SpO₂',   s.avg_spo2_pct,   s.avg_spo2_pct ? s.avg_spo2_pct + '%' : '—',       spo2Class(s.avg_spo2_pct)],
+    ['Steps',  s.steps,          s.steps ?? '—',                                     stepsClass(s.steps)],
+    ['Sleep',  s.sleep_minutes,  s.sleep_minutes ? Math.round(s.sleep_minutes/60*10)/10+'h' : '—', sleepClass(s.sleep_minutes)],
+    ['HRV',    s.hrv_rmssd,      s.hrv_rmssd ? s.hrv_rmssd+' ms' : '—',              ''],
+    ['Stress', s.stress_score,   s.stress_score ?? '—',                              ''],
+  ];
+  document.getElementById('watch-grid').innerHTML = cells.map(([k,_,v,c]) =>
+    `<div class="watch-stat ${c}"><div class="k">${k}</div><div class="v">${v}</div></div>`
+  ).join('');
 }
 
 function renderAnomalies(rows) {
   document.getElementById('anom-count').textContent = rows.length;
   const el = document.getElementById('anom-list');
-  if (!rows.length) { el.innerHTML = '<div class="empty">No anomalies yet. Click a scenario above.</div>'; return; }
-  el.innerHTML = rows.slice(0, 8).map(r => {
+  if (!rows.length) { el.innerHTML = '<div class="empty">No anomalies yet.</div>'; return; }
+  el.innerHTML = rows.slice(0, 10).map(r => {
     const ts = new Date(r.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     return `
       <div class="anomaly">
         <div class="top">
           <span><span class="pill ${r.severity}">${r.severity}</span>
-                <span style="color:#94a3b8;margin-left:.3rem">${r.marker}</span></span>
-          <span class="ts">${ts}${r.alerted ? ' · ✓' : ''}</span>
+                <span style="color:#94a3b8;margin-left:.3rem;font-size:.68rem">${r.marker}</span></span>
+          <span class="ts">${ts}${r.alerted ? '<span class="alerted">✓</span>' : ''}</span>
         </div>
         <div class="narrative">${r.narrative}</div>
       </div>`;
   }).join('');
 }
 
-function renderLatestSummary(summaries) {
-  const el = document.getElementById('latest-summary');
-  if (!summaries.length) { el.innerHTML = '<div class="empty">No watch data.</div>'; return; }
-  const s = summaries[0];
-  document.getElementById('sum-date').textContent = s.date;
-  const stats = [
-    ['HR', s.avg_heart_rate ? s.avg_heart_rate + ' bpm' : '—'],
-    ['SpO₂', s.avg_spo2_pct ? s.avg_spo2_pct + '%' : '—'],
-    ['Steps', s.steps ?? '—'],
-    ['Sleep', s.sleep_minutes ? Math.round(s.sleep_minutes/60*10)/10 + 'h' : '—'],
-    ['HRV', s.hrv_rmssd ? s.hrv_rmssd + ' ms' : '—'],
-    ['Stress', s.stress_score ?? '—'],
-  ];
-  el.innerHTML = stats.map(([k,v]) =>
-    `<div class="mini-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`
+function renderFlagCounts(counts) {
+  const el = document.getElementById('flag-counts');
+  const order = ['URGENT','HIGH','MEDIUM','LOW'];
+  const nonZero = order.filter(s => counts[s]);
+  if (!nonZero.length) { el.innerHTML = '<div class="empty">None in 7d.</div>'; return; }
+  el.innerHTML = nonZero.map(s =>
+    `<div class="mini-stat"><span><span class="pill ${s}">${s}</span></span><span class="v">${counts[s]}</span></div>`
   ).join('');
 }
 
 function renderProfiles(profiles) {
   document.getElementById('prof-count').textContent = profiles.length;
   const el = document.getElementById('prof-list');
-  if (!profiles.length) { el.innerHTML = '<div class="empty">No profiles yet.</div>'; return; }
-  el.innerHTML = profiles.slice(0, 6).map(p =>
-    `<div class="profile"><span class="name">${p.name || '—'}</span><span class="id">${p.chat_id}</span></div>`
+  if (!profiles.length) { el.innerHTML = '<div class="empty">No profiles.</div>'; return; }
+  el.innerHTML = profiles.slice(0, 8).map(p =>
+    `<div class="row"><span class="name">${p.name || '—'}</span><span class="meta">${p.chat_id}</span></div>`
   ).join('');
 }
 
@@ -313,27 +411,31 @@ function renderUsers(users) {
   document.getElementById('user-count').textContent = users.length;
   const el = document.getElementById('user-list');
   if (!users.length) { el.innerHTML = '<div class="empty">No app users.</div>'; return; }
-  el.innerHTML = users.slice(0, 6).map(u =>
-    `<div class="user-row">
+  el.innerHTML = users.slice(0, 8).map(u =>
+    `<div class="row">
        <span><span class="pill ${u.role}">${u.role}</span> <span class="name" style="margin-left:.3rem">${u.full_name}</span></span>
-       <span class="id">${u.telegram_chat_id || '—'}</span>
+       <span class="meta">${u.telegram_chat_id || '—'}</span>
      </div>`
   ).join('');
 }
 
-function renderFlagCounts(counts) {
-  const el = document.getElementById('flag-counts');
-  const order = ['URGENT','HIGH','MEDIUM','LOW'];
-  const nonZero = order.filter(s => counts[s]);
-  if (!nonZero.length) { el.innerHTML = '<div class="empty">None in 7 days.</div>'; return; }
-  el.innerHTML = nonZero.map(s =>
-    `<div class="mini-stat"><span class="k"><span class="pill ${s}">${s}</span></span><span class="v">${counts[s]}</span></div>`
-  ).join('');
+// ─── Tab switching ────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['live','sim','dir'].forEach(n => {
+    document.getElementById('tab-'+n).style.display = (n === name) ? 'block' : 'none';
+  });
+  // Sim tab uses padding:0 + iframe fill; restore block/flex as needed
+  if (name === 'sim') {
+    document.getElementById('tab-sim').style.display = 'flex';
+    document.getElementById('tab-sim').style.flexDirection = 'column';
+  }
 }
 
-// ─── Scenario quick-send (no navigating away) ──────────
+// ─── Scenario quick-send ──────────────────────────────
 async function sendScenario(key) {
   try {
+    flash(`Sending ${key}…`);
     const res = await fetch('/api/vitals-simulator/send', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -344,30 +446,35 @@ async function sendScenario(key) {
     });
     const data = await res.json();
     const det = data.upstream?.detection || {};
-    flash(`${key} sent · ${det.anomaly_count ?? 0} anomalies ${det.severities ? '(' + det.severities.join(',') + ')' : ''}`);
-    setTimeout(refresh, 500);   // allow DB to settle
+    flash(`${key} · ${det.anomaly_count ?? 0} anomalies`);
+    setTimeout(refresh, 500);
   } catch (e) {
     flash(`Error: ${e.message}`);
   }
 }
-
+let _flashTimer;
 function flash(msg) {
   const el = document.getElementById('poll');
-  const prev = el.textContent;
+  clearTimeout(_flashTimer);
   el.textContent = msg;
-  setTimeout(() => { el.textContent = prev; }, 3000);
+  _flashTimer = setTimeout(() => {
+    el.textContent = 'live ● ' + new Date().toLocaleTimeString();
+  }, 2500);
 }
 
-// ─── Main poll loop ────────────────────────────────────
+// ─── Main poll loop ───────────────────────────────────
 async function refresh() {
   try {
     const res = await fetch('/api/admin/state');
     const d = await res.json();
-    document.getElementById('poll').textContent = 'live ● ' + new Date().toLocaleTimeString();
-    document.getElementById('poll').classList.add('live');
+    const el = document.getElementById('poll');
+    if (!el.textContent.includes('Sending') && !el.textContent.includes('anomalies')) {
+      el.textContent = 'live ● ' + new Date().toLocaleTimeString();
+    }
+    el.classList.add('live');
     renderHealth(d.health);
     renderAnomalies(d.recent_anomalies);
-    renderLatestSummary(d.recent_summaries);
+    renderWatch(d.recent_summaries);
     renderProfiles(d.profiles);
     renderUsers(d.app_users);
     renderFlagCounts(d.agent_flag_counts);
