@@ -1,0 +1,34 @@
+# Saath — local dev compose. Day 1 only provisions db + redis so the
+# smoke test can run. App/bot/workers are added as we build them.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: saath
+      POSTGRES_PASSWORD: saath
+      POSTGRES_DB: saath
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saath -d saath"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - rdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  rdata:

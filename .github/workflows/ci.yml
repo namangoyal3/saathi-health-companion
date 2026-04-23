@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: saath
+          POSTGRES_PASSWORD: saath
+          POSTGRES_DB: saath
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U saath"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://saath:saath@localhost:5432/saath
+      REDIS_URL: redis://localhost:6379/0
+      ANTHROPIC_API_KEY: test-key-not-real
+      JWT_SECRET: ci-jwt-secret-64-chars-at-minimum-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      MEMORY_ROOT: ./data/memories
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Ruff (format check)
+        run: uv run ruff format --check .
+
+      - name: Mypy (strict)
+        run: uv run mypy app
+
+      - name: Alembic upgrade head
+        run: uv run alembic upgrade head
+
+      - name: Pytest
+        run: uv run pytest -v
