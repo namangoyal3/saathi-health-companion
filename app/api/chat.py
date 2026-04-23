@@ -260,7 +260,7 @@ async function sendText() {
       const rb = document.createElement('button');
       rb.className = 'replay-btn';
       rb.innerHTML = '▶ Replay';
-      rb.onclick = () => new Audio('data:audio/mpeg;base64,' + d.audio_b64).play();
+      rb.onclick = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
       loading.appendChild(document.createElement('br'));
       loading.appendChild(rb);
     } else {
