@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     r2_secret_access_key: str = ""
     r2_bucket: str = "saath-reports"
 
+    # NVIDIA NIM (OpenAI-compatible, free tier)
+    nvidia_api_key: str = ""
+    nvidia_model: str = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+
+    # ElevenLabs (web chat voice)
+    elevenlabs_api_key: str = ""
+    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"   # Rachel — clear, calm
+
     # Langfuse (optional)
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
