@@ -104,7 +104,7 @@ fun PermissionScreen(
         Text("Grant Health Connect access", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Saath reads steps, heart rate, sleep, SpO₂, skin temperature, HRV, and exercise from Health Connect once daily. " +
+            "Saath reads steps, heart rate, sleep, SpO₂, HRV, and exercise from Health Connect once daily. " +
                 "Open Samsung Health first and turn on \"Share with Health Connect\" so your watch data flows through.",
             style = MaterialTheme.typography.bodyMedium,
         )

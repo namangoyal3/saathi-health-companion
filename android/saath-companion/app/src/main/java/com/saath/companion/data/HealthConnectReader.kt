@@ -7,7 +7,6 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
-import androidx.health.connect.client.records.SkinTemperatureRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -33,9 +32,13 @@ import java.time.ZoneId
  *
  * Two Samsung-proprietary metrics are not exposed by Health Connect and
  * are always null in this reader:
- *   - stress_score: no native HC record
- *   - sleep_score:  Samsung-proprietary composite
- * Both are nullable on the backend — omitting them is safe.
+ *   - stress_score:    no native HC record
+ *   - sleep_score:     Samsung-proprietary composite
+ *   - avg_skin_temp_c: SkinTemperatureRecord was added in Health Connect
+ *                      1.1.0-alpha11; we pin to alpha07 for AGP 8.5.2
+ *                      compatibility. Bump both together when you
+ *                      want skin-temp readings.
+ * All three are nullable on the backend — omitting them is safe.
  */
 class HealthConnectReader(context: Context) : WearableReader {
 
@@ -59,7 +62,7 @@ class HealthConnectReader(context: Context) : WearableReader {
             sleepEfficiencyPct = null,          // derivable from SleepStagesRecord; skip for now
             sleepScore = null,                  // Samsung-proprietary, not in HC
             avgSpo2Pct = safeInt("spo2") { readAvgSpo2Pct(window) },
-            avgSkinTempC = safeDouble("skin_temp") { readAvgSkinTempC(window) },
+            avgSkinTempC = null,                // SkinTemperatureRecord not in HC 1.1.0-alpha07
             hrvRmssd = safeInt("hrv") { readAvgHrvRmssd(window) },
             stressScore = null,                 // not in HC
             exerciseMinutes = safeInt("exercise_min") { readExerciseMinutes(window) },
@@ -106,15 +109,6 @@ class HealthConnectReader(context: Context) : WearableReader {
         if (resp.records.isEmpty()) return null
         val mean = resp.records.sumOf { it.percentage.value } / resp.records.size
         return mean.toInt()
-    }
-
-    private suspend fun readAvgSkinTempC(window: TimeRangeFilter): Double? {
-        val resp = client.readRecords(
-            ReadRecordsRequest(SkinTemperatureRecord::class, window)
-        )
-        val baselines = resp.records.mapNotNull { it.baseline?.inCelsius }
-        if (baselines.isEmpty()) return null
-        return baselines.average()
     }
 
     private suspend fun readAvgHrvRmssd(window: TimeRangeFilter): Int? {
