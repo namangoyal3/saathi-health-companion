@@ -184,57 +184,74 @@ const sendBtn = document.getElementById('send-btn');
 const micBtn  = document.getElementById('mic-btn');
 const hint    = document.getElementById('hint');
 
-let recognition = null;
 let isRecording = false;
+let activeRec  = null;
 
 inp.addEventListener('keypress', e => { if (e.key === 'Enter') sendText(); });
 
 // ── Voice input setup ───────────────────────────────────────────────────────
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SpeechRec) {
-  recognition = new SpeechRec();
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.lang = 'en-IN';
 
-  recognition.onstart = () => {
+if (!SpeechRec) {
+  micBtn.title = 'Speech not supported — use Chrome or Edge';
+  micBtn.style.opacity = '.4';
+  micBtn.onclick = () => { hint.textContent = 'Use Chrome or Edge for voice input.'; };
+}
+
+function toggleMic() {
+  if (!SpeechRec) return;
+  if (isRecording) {
+    if (activeRec) activeRec.stop();
+    return;
+  }
+
+  // Fresh instance every time — required by many browsers after onend
+  const rec = new SpeechRec();
+  rec.continuous    = false;
+  rec.interimResults = true;
+  rec.lang          = navigator.language || 'en-US';
+  activeRec = rec;
+
+  rec.onstart = () => {
     isRecording = true;
     micBtn.classList.add('recording');
     micBtn.textContent = '⏹';
-    hint.textContent = '🎙 Listening… speak now';
+    hint.textContent = 'Listening… speak now';
   };
 
-  recognition.onresult = e => {
+  rec.onresult = e => {
     const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
     inp.value = transcript;
-    if (e.results[e.results.length-1].isFinal) {
+    if (e.results[e.results.length - 1].isFinal) {
       hint.textContent = '';
       stopMic();
       sendText();
     }
   };
 
-  recognition.onerror = err => {
-    hint.textContent = 'Mic error: ' + err.error + '. Try typing instead.';
+  rec.onerror = err => {
+    const msgs = {
+      'not-allowed':  'Microphone permission denied. Allow mic access in your browser and try again.',
+      'no-speech':    'No speech detected. Please try again.',
+      'network':      'Network error. Check your connection.',
+      'audio-capture':'No microphone found.',
+    };
+    hint.textContent = msgs[err.error] || ('Mic error: ' + err.error);
     stopMic();
   };
 
-  recognition.onend = () => stopMic();
-} else {
-  micBtn.title = 'Speech not supported in this browser (use Chrome/Edge)';
-  micBtn.style.opacity = '.4';
-  micBtn.onclick = () => { hint.textContent = 'Use Chrome or Edge for voice input.'; };
-}
+  rec.onend = () => stopMic();
 
-function toggleMic() {
-  if (!recognition) return;
-  if (isRecording) { recognition.stop(); return; }
-  inp.value = '';
-  recognition.start();
+  try {
+    rec.start();
+  } catch(e) {
+    hint.textContent = 'Could not start mic: ' + e.message;
+  }
 }
 
 function stopMic() {
   isRecording = false;
+  activeRec   = null;
   micBtn.classList.remove('recording');
   micBtn.textContent = '🎙';
 }
