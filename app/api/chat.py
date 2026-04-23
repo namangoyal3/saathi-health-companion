@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import base64
 import logging
+import uuid
 
+import asyncpg
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.config import settings
-from app.llm.openrouter import openrouter_chat
+from app.llm.chat import llm_chat
+
+LAKSHMI_SENIOR_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -50,10 +54,49 @@ async def chat_page() -> str:
     return _HTML
 
 
+async def _recent_vitals_for_lakshmi() -> str:
+    """Append smartwatch anomaly context to the chat system prompt."""
+    try:
+        conn: asyncpg.Connection = await asyncpg.connect(
+            dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        )
+    except Exception as exc:
+        log.debug("chat_vitals_db_connect_failed err=%s", exc)
+        return ""
+    try:
+        rows = await conn.fetch(
+            """SELECT marker, severity, value, threshold, narrative, summary_date
+               FROM vitals_anomaly
+               WHERE senior_id = $1
+               ORDER BY created_at DESC
+               LIMIT 5""",
+            LAKSHMI_SENIOR_ID,
+        )
+    except Exception as exc:
+        log.debug("chat_vitals_query_failed err=%s", exc)
+        return ""
+    finally:
+        await conn.close()
+
+    if not rows:
+        return ""
+    lines = [
+        f"- {r['summary_date']} · {r['severity']} · {r['narrative']}"
+        for r in rows
+    ]
+    return (
+        "\nRECENT SMARTWATCH FLAGS (from Galaxy Watch, last 5 most recent):\n"
+        + "\n".join(lines)
+        + "\nIf Lakshmi asks how she's been or mentions feeling off, "
+        "reference these flags warmly without alarming her.\n"
+    )
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
+    system = _SYSTEM + await _recent_vitals_for_lakshmi()
     try:
-        text = await openrouter_chat(system=_SYSTEM, user=req.message, max_tokens=120)
+        text = await llm_chat(system=system, user=req.message, max_tokens=120)
     except Exception as exc:
         log.error("chat_llm_failed err=%s", exc)
         text = "I'm having a little trouble right now. Please try again in a moment. 🙏"
@@ -259,13 +302,13 @@ function stopMic() {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function stripMarkdown(text) {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold**
-    .replace(/\*(.+?)\*/g, '$1')        // *italic*
-    .replace(/#{1,6}\s*/g, '')          // ## headings
+    .replace(/\\*\\*(.+?)\\*\\*/g, '$1')   // **bold**
+    .replace(/\\*(.+?)\\*/g, '$1')        // *italic*
+    .replace(/#{1,6}\\s*/g, '')          // ## headings
     .replace(/`{1,3}[^`]*`{1,3}/g, '') // `code`
-    .replace(/^\s*[-*•]\s+/gm, '')      // bullet points
-    .replace(/^\s*\d+\.\s+/gm, '')      // numbered lists
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [links](url)
+    .replace(/^\\s*[-*•]\\s+/gm, '')      // bullet points
+    .replace(/^\\s*\\d+\\.\\s+/gm, '')      // numbered lists
+    .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1') // [links](url)
     .replace(/[^\x00-퟿-�]/g, '')  // strip surrogates + emoji
     .replace(/\n{2,}/g, ' ')            // collapse blank lines
     .replace(/\n/g, ' ')                // single newlines → space
