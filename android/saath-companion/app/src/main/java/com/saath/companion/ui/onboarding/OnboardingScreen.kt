@@ -31,13 +31,15 @@ fun WelcomeScreen(onNext: () -> Unit) {
     }
 }
 
-// Step 2 — senior_id + shared secret
+// Step 2 — senior_id + shared secret + backend URL
 @Composable
 fun PairScreen(
     seniorId: String,
     secret: String,
+    backendUrl: String,
     onSeniorIdChange: (String) -> Unit,
     onSecretChange: (String) -> Unit,
+    onBackendUrlChange: (String) -> Unit,
     onNext: () -> Unit,
 ) {
     Column(
@@ -64,10 +66,19 @@ fun PairScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
         )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = backendUrl,
+            onValueChange = onBackendUrlChange,
+            label = { Text("Backend URL (e.g. https://saath.example.com)") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            singleLine = true,
+        )
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onNext,
-            enabled = seniorId.isNotBlank() && secret.isNotBlank(),
+            enabled = seniorId.isNotBlank() && secret.isNotBlank() && backendUrl.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Continue")

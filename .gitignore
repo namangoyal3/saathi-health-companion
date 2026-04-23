@@ -27,8 +27,9 @@ secrets/
 *.pem
 *.key
 
-# Data / runtime
-data/
+# Data / runtime — anchored to repo root so the Android companion app's
+# Kotlin `com/saath/companion/data/` package isn't swept up.
+/data/
 /memories/
 *.sqlite
 *.db
