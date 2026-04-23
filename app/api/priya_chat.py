@@ -14,7 +14,6 @@ Every turn is persisted to bot_conv_memory under a stable synthetic chat_id
 
 from __future__ import annotations
 
-import datetime
 import logging
 import uuid
 
@@ -119,17 +118,13 @@ async def _lakshmi_context() -> str:
         parts.append(
             "RECENT SMARTWATCH ANOMALIES:\n"
             + "\n".join(
-                f"- {a['summary_date']} · {a['severity']} · {a['narrative']}"
-                for a in anomalies
+                f"- {a['summary_date']} · {a['severity']} · {a['narrative']}" for a in anomalies
             )
         )
     if flags:
         parts.append(
             "RECENT CLINICAL FLAGS (HIGH/URGENT, 7d):\n"
-            + "\n".join(
-                f"- {f['severity']} · {f['flag_type']} · {f['finding']}"
-                for f in flags
-            )
+            + "\n".join(f"- {f['severity']} · {f['flag_type']} · {f['finding']}" for f in flags)
         )
     return "\n\n".join(parts)
 

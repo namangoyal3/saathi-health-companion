@@ -217,9 +217,7 @@ async def _send_summary_for_profile(app: Application, profile: dict[str, Any]) -
     text = f"{header}\n" + "\n".join(body_lines)
 
     try:
-        await app.bot.send_message(
-            chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN
-        )
+        await app.bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
     except Exception as exc:
         logger.warning("daily summary send failed for %s: %s", chat_id, exc)
 

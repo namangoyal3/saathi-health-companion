@@ -44,10 +44,7 @@ def _summarise(flags: list[DDIFlag]) -> str:
         drugs = " + ".join(f.drugs_involved)
         lines.append(f"• *{f.severity}* ({drugs}): {f.finding}")
     header = "⚠️ *Medication interaction check*"
-    footer = (
-        "_Informational summary only — physician review recommended before "
-        "any dose change._"
-    )
+    footer = "_Informational summary only — physician review recommended before any dose change._"
     return f"{header}\n\n" + "\n".join(lines) + f"\n\n{footer}"
 
 

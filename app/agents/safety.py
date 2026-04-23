@@ -104,7 +104,9 @@ async def check(
             reason=data.get("reason"),
         )
     except Exception:
-        return SafetyResult(ok=False, text="", rewritten=False, emergency=False, reason="gatekeeper_error")
+        return SafetyResult(
+            ok=False, text="", rewritten=False, emergency=False, reason="gatekeeper_error"
+        )
 
 
 F = TypeVar("F")
@@ -128,7 +130,9 @@ def safety_gated(
         async def wrapper(*args: Any, **kwargs: Any) -> str:
             result_text: str = await fn(*args, **kwargs)
             raw_sid = kwargs.get("senior_id")
-            senior_id: uuid.UUID | None = uuid.UUID(str(raw_sid)) if isinstance(raw_sid, (str, uuid.UUID)) else None
+            senior_id: uuid.UUID | None = (
+                uuid.UUID(str(raw_sid)) if isinstance(raw_sid, (str, uuid.UUID)) else None
+            )
             safety = await check(result_text, context=context, agent=agent, senior_id=senior_id)
             if safety.emergency:
                 return safety.text

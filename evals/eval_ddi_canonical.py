@@ -73,7 +73,10 @@ async def main() -> int:
         for f in high_flags
     )
     dizziness_bp = any(
-        ("amlodipine" in " ".join(f.drugs_involved).lower() or "telmisartan" in " ".join(f.drugs_involved).lower())
+        (
+            "amlodipine" in " ".join(f.drugs_involved).lower()
+            or "telmisartan" in " ".join(f.drugs_involved).lower()
+        )
         and f.interaction_type == "drug_symptom"
         for f in high_flags
     )

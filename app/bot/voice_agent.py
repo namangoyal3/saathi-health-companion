@@ -27,6 +27,7 @@ def _spawn_background(coro: asyncio.Future[None] | object) -> None:
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
 
+
 log = logging.getLogger(__name__)
 
 _SYSTEM = """You are Saath, a warm and caring AI health companion for aging Indian parents.
@@ -58,9 +59,18 @@ async def _mp3_to_ogg(mp3_bytes: bytes) -> bytes | None:
     """Convert MP3 bytes to OGG/OPUS using ffmpeg (required for Telegram voice notes)."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", "pipe:0",
-            "-c:a", "libopus", "-b:a", "24k",
-            "-vbr", "on", "-f", "ogg", "pipe:1",
+            "ffmpeg",
+            "-i",
+            "pipe:0",
+            "-c:a",
+            "libopus",
+            "-b:a",
+            "24k",
+            "-vbr",
+            "on",
+            "-f",
+            "ogg",
+            "pipe:1",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
@@ -131,10 +141,7 @@ async def _recent_vitals_context(chat_id: int) -> str:
     if not rows:
         return ""
 
-    lines = [
-        f"- {r['summary_date']} · {r['severity']} · {r['narrative']}"
-        for r in rows
-    ]
+    lines = [f"- {r['summary_date']} · {r['severity']} · {r['narrative']}" for r in rows]
     return "RECENT SMARTWATCH FLAGS (last 3, most recent first):\n" + "\n".join(lines)
 
 
@@ -177,9 +184,7 @@ async def _generate_reply(chat_id: int, user_text: str) -> str:
     system = await _build_system(chat_id)
     history = await db.get_conv(chat_id, limit=10)
     try:
-        reply = await llm_chat(
-            system=system, user=user_text, history=history, max_tokens=160
-        )
+        reply = await llm_chat(system=system, user=user_text, history=history, max_tokens=160)
     except Exception as exc:
         log.error("ai_message_llm_failed err=%s", exc)
         reply = "I'm having a little trouble right now. Please try again in a moment."
@@ -257,7 +262,9 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
     audio = await _download_voice(context, voice.file_id)
     if audio is None:
-        await update.message.reply_text("Sorry, I couldn't fetch your voice message. Please try again.")
+        await update.message.reply_text(
+            "Sorry, I couldn't fetch your voice message. Please try again."
+        )
         return
 
     transcript = await transcribe(audio, filename="voice.ogg")

@@ -47,12 +47,24 @@ async def seeded_lakshmi_summary() -> uuid.UUID:
                  avg_spo2_pct = EXCLUDED.avg_spo2_pct,
                  steps = EXCLUDED.steps,
                  sleep_minutes = EXCLUDED.sleep_minutes""",
-            LAKSHMI_SENIOR_ID, today, 1600, 112, 270, 64, 48, 88, 37.1, 18, 78, 5,
+            LAKSHMI_SENIOR_ID,
+            today,
+            1600,
+            112,
+            270,
+            64,
+            48,
+            88,
+            37.1,
+            18,
+            78,
+            5,
         )
         # Clear any prior anomalies for today so the test is deterministic
         await conn.execute(
             "DELETE FROM vitals_anomaly WHERE senior_id=$1 AND summary_date=$2",
-            LAKSHMI_SENIOR_ID, today,
+            LAKSHMI_SENIOR_ID,
+            today,
         )
     finally:
         await conn.close()
@@ -74,15 +86,31 @@ async def test_process_summary_persists_anomalies_with_mocked_classifier(
         summary: DailySummaryInput, *, baseline_skin_temp_c: float | None = None
     ) -> list[VitalsAnomaly]:
         return [
-            VitalsAnomaly(marker="avg_heart_rate", severity="HIGH", value=112.0,
-                          threshold=105.0, narrative="Heart rate averaged 112 bpm, above the 105 bpm threshold."),
-            VitalsAnomaly(marker="avg_spo2_pct", severity="URGENT", value=88.0,
-                          threshold=90.0, narrative="SpO₂ averaged 88%, below the 90% threshold."),
-            VitalsAnomaly(marker="steps", severity="MEDIUM", value=1600.0,
-                          threshold=2000.0, narrative="Step count 1,600 is below the 2,000 daily threshold."),
+            VitalsAnomaly(
+                marker="avg_heart_rate",
+                severity="HIGH",
+                value=112.0,
+                threshold=105.0,
+                narrative="Heart rate averaged 112 bpm, above the 105 bpm threshold.",
+            ),
+            VitalsAnomaly(
+                marker="avg_spo2_pct",
+                severity="URGENT",
+                value=88.0,
+                threshold=90.0,
+                narrative="SpO₂ averaged 88%, below the 90% threshold.",
+            ),
+            VitalsAnomaly(
+                marker="steps",
+                severity="MEDIUM",
+                value=1600.0,
+                threshold=2000.0,
+                narrative="Step count 1,600 is below the 2,000 daily threshold.",
+            ),
         ]
 
     import app.workers.vitals_anomaly as worker_mod
+
     monkeypatch.setattr(worker_mod, "classify", fake_run)
 
     today = datetime.date.today()
@@ -97,7 +125,8 @@ async def test_process_summary_persists_anomalies_with_mocked_classifier(
         rows = await conn.fetch(
             "SELECT marker, severity, alerted_at FROM vitals_anomaly "
             "WHERE senior_id=$1 AND summary_date=$2 ORDER BY marker",
-            seeded_lakshmi_summary, today,
+            seeded_lakshmi_summary,
+            today,
         )
         assert len(rows) == 3
         markers = {r["marker"] for r in rows}
@@ -144,6 +173,7 @@ async def test_normal_summary_produces_no_anomalies(
         return []
 
     import app.workers.vitals_anomaly as worker_mod
+
     monkeypatch.setattr(worker_mod, "classify", fake_run)
 
     # Seed a normal summary
@@ -155,11 +185,16 @@ async def test_normal_summary_produces_no_anomalies(
                (senior_id, date, steps, avg_heart_rate, avg_spo2_pct)
                VALUES ($1,$2,$3,$4,$5)
                ON CONFLICT (senior_id, date) DO UPDATE SET steps=EXCLUDED.steps""",
-            LAKSHMI_SENIOR_ID, today, 6500, 72, 98,
+            LAKSHMI_SENIOR_ID,
+            today,
+            6500,
+            72,
+            98,
         )
         await conn.execute(
             "DELETE FROM vitals_anomaly WHERE senior_id=$1 AND summary_date=$2",
-            LAKSHMI_SENIOR_ID, today,
+            LAKSHMI_SENIOR_ID,
+            today,
         )
     finally:
         await conn.close()

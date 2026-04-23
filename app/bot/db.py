@@ -353,12 +353,14 @@ async def get_adherence_streak(chat_id: int) -> int:
 
     # Group by date → counts of taken
     from collections import defaultdict
+
     by_date: dict[Any, dict[str, int]] = defaultdict(lambda: {"taken": 0, "skipped": 0})
     for r in rows:
         by_date[r["event_date"]][r["event"]] = by_date[r["event_date"]].get(r["event"], 0) + 1
 
     # Walk back from today; streak breaks on first day where taken < expected
     import datetime as _dt
+
     streak = 0
     d = _dt.date.today()
     for _ in range(30):

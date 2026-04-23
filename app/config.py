@@ -48,11 +48,11 @@ class Settings(BaseSettings):
     fs_esl_host: str = ""
     fs_esl_port: int = 8021
     fs_esl_password: str = "change-me-esl"
-    fs_sip_gateway: str = "pstn"     # sofia profile gateway name in FS config
-    fs_caller_id: str = ""           # outbound CLI shown to senior
+    fs_sip_gateway: str = "pstn"  # sofia profile gateway name in FS config
+    fs_caller_id: str = ""  # outbound CLI shown to senior
 
     # IVR (Day 3)
-    ivr_provider: str = "exotel"     # 'exotel' | 'freeswitch'
+    ivr_provider: str = "exotel"  # 'exotel' | 'freeswitch'
     app_base_url: str = "http://localhost:8080"
     exotel_webhook_secret: str = "change-me-ivr-webhook-secret"
     sarvam_api_key: str = ""
@@ -79,7 +79,7 @@ class Settings(BaseSettings):
 
     # ElevenLabs (web chat voice)
     elevenlabs_api_key: str = ""
-    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"   # Rachel — clear, calm
+    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel — clear, calm
 
     # Groq (free Whisper v3 for Telegram voice STT)
     groq_api_key: str = ""

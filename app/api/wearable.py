@@ -70,7 +70,9 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
     try:
         datetime.date.fromisoformat(payload.date)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=f"invalid date format: {payload.date!r}") from exc
+        raise HTTPException(
+            status_code=422, detail=f"invalid date format: {payload.date!r}"
+        ) from exc
 
     conn: asyncpg.Connection = await asyncpg.connect(
         dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
@@ -128,8 +130,9 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
     try:
         detection = await process_summary(payload.senior_id, payload.date)
     except Exception as exc:
-        log.warning("vitals_detection_failed senior=%s date=%s err=%s",
-                    payload.senior_id, payload.date, exc)
+        log.warning(
+            "vitals_detection_failed senior=%s date=%s err=%s", payload.senior_id, payload.date, exc
+        )
         detection = {"anomaly_count": 0, "alerted": False, "severities": []}
 
     return {"ok": True, "date": payload.date, "detection": detection}

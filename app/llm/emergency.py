@@ -31,12 +31,12 @@ _PATTERNS = [
     r"\bsevere bleeding\b",
     r"\bheart attack\b",
     # Hindi — emergency vocabulary that Lakshmi/Meera might send
-    r"सीने\s*में\s*दर्द",       # chest pain
-    r"साँस\s*नहीं",              # can't breathe
-    r"बेहोश",                      # unconscious/faint
-    r"दौरा",                       # attack/seizure
-    r"दिल\s*का\s*दौरा",          # heart attack
-    r"पक्षाघात",                   # stroke/paralysis
+    r"सीने\s*में\s*दर्द",  # chest pain
+    r"साँस\s*नहीं",  # can't breathe
+    r"बेहोश",  # unconscious/faint
+    r"दौरा",  # attack/seizure
+    r"दिल\s*का\s*दौरा",  # heart attack
+    r"पक्षाघात",  # stroke/paralysis
 ]
 
 EMERGENCY_RE = re.compile("|".join(_PATTERNS), re.IGNORECASE)
@@ -45,10 +45,7 @@ EMERGENCY_REPLY_EN = (
     "Please call emergency services at 112 immediately. "
     "If someone is with you, ask them to help you call."
 )
-EMERGENCY_REPLY_HI = (
-    "कृपया तुरंत 112 पर आपातकालीन सेवा को कॉल करें। "
-    "अगर कोई आपके साथ है, तो उनकी मदद लें।"
-)
+EMERGENCY_REPLY_HI = "कृपया तुरंत 112 पर आपातकालीन सेवा को कॉल करें। अगर कोई आपके साथ है, तो उनकी मदद लें।"
 
 
 def is_emergency(text: str) -> bool:

@@ -129,7 +129,6 @@ async def exotel_webhook(request: Request) -> Response:
     return Response(content="<Response><Hangup/></Response>", media_type="application/xml")
 
 
-
 async def _handle_flow_a_dtmf(
     call_id: uuid.UUID,
     senior_id: uuid.UUID,

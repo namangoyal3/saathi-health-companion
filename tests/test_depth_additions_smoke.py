@@ -115,6 +115,7 @@ async def test_adherence_streak_zero_with_no_meds() -> None:
 async def test_bot_application_registers_all_handlers() -> None:
     """Smoke: import chain works + all new commands are registered."""
     import os
+
     os.environ.setdefault("TELEGRAM_BOT_TOKEN", "fake-token-for-smoke")
 
     from app.bot.application import build_application
@@ -157,6 +158,7 @@ async def test_ddi_check_skips_when_no_api_key(monkeypatch: pytest.MonkeyPatch) 
     try:
         # Blank API key → early return, no exception
         from app.config import settings as cfg
+
         monkeypatch.setattr(cfg, "anthropic_api_key", "")
 
         await bot_db.save_profile(chat_id, "Test", "en", [])

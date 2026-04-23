@@ -207,7 +207,9 @@ def parse_lab_pdf(pdf_path: Path, *, use_fallback: bool = True) -> list[Biomarke
         else 0.0
     )
 
-    if use_fallback and (mean_conf < FALLBACK_THRESHOLD_CONFIDENCE or len(biomarkers_raw) < FALLBACK_THRESHOLD_COUNT):
+    if use_fallback and (
+        mean_conf < FALLBACK_THRESHOLD_CONFIDENCE or len(biomarkers_raw) < FALLBACK_THRESHOLD_COUNT
+    ):
         fallback_data = _fallback_extract(pdf_path)
         if fallback_data.get("biomarkers"):
             biomarkers_raw = fallback_data["biomarkers"]

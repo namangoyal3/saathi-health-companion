@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import asyncpg  # type: ignore[import]
 
+import app.db.pg  # noqa: F401  — patches asyncpg.connect for Supabase pooler
 from app.config import settings
 from evals.personas.lakshmi import LAKSHMI, LAKSHMI_SENIOR_ID, PRIYA, PRIYA_GUARDIAN_ID
 from evals.personas.meera import MEERA, MEERA_GUARDIAN, MEERA_GUARDIAN_ID, MEERA_SENIOR_ID

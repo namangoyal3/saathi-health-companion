@@ -33,10 +33,7 @@ def _fire_and_forget(coro: Coroutine[Any, Any, Any]) -> None:
     t.add_done_callback(_bg_tasks.discard)
 
 
-_DRY_RUN = not (
-    settings.fs_esl_host
-    and not settings.fs_esl_password.startswith("change-me")
-)
+_DRY_RUN = not (settings.fs_esl_host and not settings.fs_esl_password.startswith("change-me"))
 
 # IVR prompt text per flow and language
 _PROMPTS: dict[str, dict[str, str]] = {
@@ -62,6 +59,7 @@ _PROMPTS: dict[str, dict[str, str]] = {
 # Minimal asyncio ESL client (no third-party deps)
 # ---------------------------------------------------------------------------
 
+
 class _ESL:
     """Asyncio-native FreeSWITCH Event Socket client.
 
@@ -84,7 +82,7 @@ class _ESL:
     async def connect(self) -> None:
         self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
         # Auth before the reader loop starts so there is no concurrent read.
-        await self._read_packet()                              # auth/request
+        await self._read_packet()  # auth/request
         self._write(f"auth {self._password}\n\n")
         reply = await self._read_packet()
         if "+OK accepted" not in reply.get("Reply-Text", ""):
@@ -192,6 +190,7 @@ class _ESL:
 # Public interface
 # ---------------------------------------------------------------------------
 
+
 async def place_outbound(
     to_e164: str,
     flow: str,
@@ -211,17 +210,25 @@ async def place_outbound(
         sid = f"dry_run_fs_{call_id}"
         log.info(
             "ivr_dry_run provider=freeswitch to=%s flow=%s lang=%s call_id=%s",
-            to_e164, flow, language, call_id,
+            to_e164,
+            flow,
+            language,
+            call_id,
         )
         await _persist_call_log(call_id, senior_id, sid, flow, language, "queued")
         return sid
 
     sid = str(call_id)
     await _persist_call_log(call_id, senior_id, sid, flow, language, "queued")
-    _fire_and_forget(_drive_call(
-        call_id=call_id, senior_id=senior_id,
-        to_e164=to_e164, flow=flow, language=language,
-    ))
+    _fire_and_forget(
+        _drive_call(
+            call_id=call_id,
+            senior_id=senior_id,
+            to_e164=to_e164,
+            flow=flow,
+            language=language,
+        )
+    )
     return sid
 
 
@@ -272,9 +279,7 @@ async def _drive_call(
         esl.on("CHANNEL_EXECUTE_COMPLETE", on_execute_complete)
 
         # Reader loop already started inside connect(); just subscribe to events.
-        await esl.subscribe(
-            "CHANNEL_ANSWER", "CHANNEL_HANGUP", "DTMF", "CHANNEL_EXECUTE_COMPLETE"
-        )
+        await esl.subscribe("CHANNEL_ANSWER", "CHANNEL_HANGUP", "DTMF", "CHANNEL_EXECUTE_COMPLETE")
 
         # Originate
         gw = settings.fs_sip_gateway or "default"
@@ -316,6 +321,7 @@ async def _drive_call(
     except Exception as exc:
         log.warning("ivr_freeswitch_error call_id=%s err=%s", call_id, exc)
         import contextlib
+
         with contextlib.suppress(Exception):
             await transition(call_id, "failed")
     finally:
@@ -361,6 +367,7 @@ async def _play_and_collect(
 # Persistence helpers
 # ---------------------------------------------------------------------------
 
+
 async def _persist_call_log(
     call_id: uuid.UUID,
     senior_id: uuid.UUID,
@@ -378,7 +385,13 @@ async def _persist_call_log(
                (id, senior_id, provider, call_sid, flow, language, status, started_at)
                VALUES ($1,$2,'freeswitch',$3,$4,$5,$6,$7)
                ON CONFLICT DO NOTHING""",
-            call_id, senior_id, call_sid, flow, language, status, datetime.now(UTC),
+            call_id,
+            senior_id,
+            call_sid,
+            flow,
+            language,
+            status,
+            datetime.now(UTC),
         )
     finally:
         await conn.close()

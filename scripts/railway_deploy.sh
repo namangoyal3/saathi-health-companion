@@ -58,16 +58,16 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
   # skip DATABASE_URL / REDIS_URL — Railway's managed plugins provide them
-  case "$key" in DATABASE_URL|REDIS_URL) continue ;; esac
+  # case "$key" in DATABASE_URL|REDIS_URL) continue ;; esac
   echo "  → setting $key"
   railway variables --skip-deploys --set "$line" >/dev/null
 done < "$ENV_FILE"
 
 echo ""
-echo "=== 5. explicit refs to Postgres + Redis managed URLs ==="
-railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_URL}}' >/dev/null || \
-  railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}' >/dev/null || true
-railway variables --skip-deploys --set 'REDIS_URL=${{Redis.REDIS_URL}}' >/dev/null || true
+# echo "=== 5. explicit refs to Postgres + Redis managed URLs ==="
+# railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_URL}}' >/dev/null || \
+#   railway variables --skip-deploys --set 'DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}' >/dev/null || true
+# railway variables --skip-deploys --set 'REDIS_URL=${{Redis.REDIS_URL}}' >/dev/null || true
 
 echo ""
 echo "=== 6. deploy ==="

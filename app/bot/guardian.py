@@ -53,7 +53,7 @@ async def link_senior(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not update.effective_chat or not update.message:
         return
     guardian_chat_id = update.effective_chat.id
-    args = (context.args or [])
+    args = context.args or []
     if not args:
         await update.message.reply_text(
             get_string("link_senior_usage", "en"),
@@ -162,9 +162,7 @@ async def report_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         )
         chunks.append(f"{header}\n{body}")
 
-    await update.message.reply_text(
-        "\n\n".join(chunks), parse_mode=ParseMode.MARKDOWN
-    )
+    await update.message.reply_text("\n\n".join(chunks), parse_mode=ParseMode.MARKDOWN)
 
 
 def guardian_handlers() -> list[CommandHandler]:

@@ -9,7 +9,6 @@ Routes:
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -65,11 +64,16 @@ async def admin_state() -> dict[str, Any]:
         conn: asyncpg.Connection = await asyncpg.connect(dsn=_pg_dsn())
     except Exception as exc:
         health["db"] = f"down: {exc}"
-        return {"timestamp": now, "health": health, "profiles": profiles,
-                "app_users": app_users, "recent_anomalies": recent_anomalies,
-                "recent_summaries": recent_summaries,
-                "recent_telegram_in": recent_telegram_in,
-                "agent_flag_counts": agent_flag_counts}
+        return {
+            "timestamp": now,
+            "health": health,
+            "profiles": profiles,
+            "app_users": app_users,
+            "recent_anomalies": recent_anomalies,
+            "recent_summaries": recent_summaries,
+            "recent_telegram_in": recent_telegram_in,
+            "agent_flag_counts": agent_flag_counts,
+        }
 
     try:
         health["db"] = "ok"
@@ -82,28 +86,32 @@ async def admin_state() -> dict[str, Any]:
                FROM bot_profile
                ORDER BY updated_at DESC LIMIT 20"""
         ):
-            profiles.append({
-                "chat_id": row["chat_id"],
-                "name": row["name"],
-                "language": row["language"],
-                "conditions": row["conditions"],
-                "family_chat_id": row["family_chat_id"],
-                "updated_at": row["updated_at"].isoformat(),
-            })
+            profiles.append(
+                {
+                    "chat_id": row["chat_id"],
+                    "name": row["name"],
+                    "language": row["language"],
+                    "conditions": row["conditions"],
+                    "family_chat_id": row["family_chat_id"],
+                    "updated_at": row["updated_at"].isoformat(),
+                }
+            )
 
         for row in await conn.fetch(
             """SELECT id, role, full_name, language, telegram_chat_id, created_at
                FROM app_user
                ORDER BY created_at DESC LIMIT 20"""
         ):
-            app_users.append({
-                "id": str(row["id"]),
-                "role": row["role"],
-                "full_name": row["full_name"],
-                "language": row["language"],
-                "telegram_chat_id": row["telegram_chat_id"],
-                "created_at": row["created_at"].isoformat(),
-            })
+            app_users.append(
+                {
+                    "id": str(row["id"]),
+                    "role": row["role"],
+                    "full_name": row["full_name"],
+                    "language": row["language"],
+                    "telegram_chat_id": row["telegram_chat_id"],
+                    "created_at": row["created_at"].isoformat(),
+                }
+            )
 
         for row in await conn.fetch(
             """SELECT va.marker, va.severity, va.value, va.threshold, va.narrative,
@@ -113,17 +121,19 @@ async def admin_state() -> dict[str, Any]:
                LEFT JOIN app_user u ON u.id = va.senior_id
                ORDER BY va.created_at DESC LIMIT 15"""
         ):
-            recent_anomalies.append({
-                "senior_name": row["senior_name"] or "—",
-                "marker": row["marker"],
-                "severity": row["severity"],
-                "value": float(row["value"]),
-                "threshold": float(row["threshold"]),
-                "narrative": row["narrative"],
-                "summary_date": row["summary_date"].isoformat(),
-                "alerted": row["alerted_at"] is not None,
-                "created_at": row["created_at"].isoformat(),
-            })
+            recent_anomalies.append(
+                {
+                    "senior_name": row["senior_name"] or "—",
+                    "marker": row["marker"],
+                    "severity": row["severity"],
+                    "value": float(row["value"]),
+                    "threshold": float(row["threshold"]),
+                    "narrative": row["narrative"],
+                    "summary_date": row["summary_date"].isoformat(),
+                    "alerted": row["alerted_at"] is not None,
+                    "created_at": row["created_at"].isoformat(),
+                }
+            )
 
         for row in await conn.fetch(
             """SELECT w.date, w.steps, w.avg_heart_rate, w.avg_spo2_pct,
@@ -133,16 +143,18 @@ async def admin_state() -> dict[str, Any]:
                LEFT JOIN app_user u ON u.id = w.senior_id
                ORDER BY w.date DESC, w.updated_at DESC LIMIT 10"""
         ):
-            recent_summaries.append({
-                "senior_name": row["senior_name"] or "—",
-                "date": row["date"].isoformat(),
-                "steps": row["steps"],
-                "avg_heart_rate": row["avg_heart_rate"],
-                "avg_spo2_pct": row["avg_spo2_pct"],
-                "sleep_minutes": row["sleep_minutes"],
-                "hrv_rmssd": row["hrv_rmssd"],
-                "stress_score": row["stress_score"],
-            })
+            recent_summaries.append(
+                {
+                    "senior_name": row["senior_name"] or "—",
+                    "date": row["date"].isoformat(),
+                    "steps": row["steps"],
+                    "avg_heart_rate": row["avg_heart_rate"],
+                    "avg_spo2_pct": row["avg_spo2_pct"],
+                    "sleep_minutes": row["sleep_minutes"],
+                    "hrv_rmssd": row["hrv_rmssd"],
+                    "stress_score": row["stress_score"],
+                }
+            )
 
         for row in await conn.fetch(
             """SELECT t.received_at, t.message_type, t.intent, t.parsed_symptom,
@@ -151,14 +163,16 @@ async def admin_state() -> dict[str, Any]:
                LEFT JOIN app_user u ON u.id = t.senior_id
                ORDER BY t.received_at DESC LIMIT 10"""
         ):
-            recent_telegram_in.append({
-                "senior_name": row["senior_name"] or "—",
-                "received_at": row["received_at"].isoformat(),
-                "message_type": row["message_type"],
-                "intent": row["intent"],
-                "parsed_symptom": row["parsed_symptom"],
-                "raw_text": (row["raw_text"] or "")[:160],
-            })
+            recent_telegram_in.append(
+                {
+                    "senior_name": row["senior_name"] or "—",
+                    "received_at": row["received_at"].isoformat(),
+                    "message_type": row["message_type"],
+                    "intent": row["intent"],
+                    "parsed_symptom": row["parsed_symptom"],
+                    "raw_text": (row["raw_text"] or "")[:160],
+                }
+            )
 
         for row in await conn.fetch(
             """SELECT severity, COUNT(*) AS n FROM agent_flag
@@ -217,7 +231,8 @@ async def admin_chat_tail(chat_id: int, limit: int = 30) -> dict[str, Any]:
         rows = await conn.fetch(
             """SELECT role, content, created_at FROM bot_conv_memory
                WHERE chat_id = $1 ORDER BY created_at DESC LIMIT $2""",
-            chat_id, limit,
+            chat_id,
+            limit,
         )
     finally:
         await conn.close()
@@ -240,6 +255,4 @@ async def admin_chat_tail(chat_id: int, limit: int = 30) -> dict[str, Any]:
 def _has_key(value: str | None) -> bool:
     if not value:
         return False
-    if value.startswith("change-me"):
-        return False
-    return True
+    return not value.startswith("change-me")

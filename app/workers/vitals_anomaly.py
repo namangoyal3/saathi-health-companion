@@ -58,7 +58,9 @@ async def _load_summary(
         sleep_efficiency_pct=row["sleep_efficiency_pct"],
         sleep_score=row["sleep_score"],
         avg_spo2_pct=row["avg_spo2_pct"],
-        avg_skin_temp_c=float(row["avg_skin_temp_c"]) if row["avg_skin_temp_c"] is not None else None,
+        avg_skin_temp_c=float(row["avg_skin_temp_c"])
+        if row["avg_skin_temp_c"] is not None
+        else None,
         hrv_rmssd=row["hrv_rmssd"],
         stress_score=row["stress_score"],
         exercise_minutes=row["exercise_minutes"],
@@ -199,10 +201,7 @@ async def _fire_telegram_alert(
     )
     header = f"⚠️ {highest.severity} — Vitals anomaly for {senior_name}"
     body_lines = "\n".join(f"• {a.narrative}" for a in high_urgent)
-    text = (
-        f"*{header}*\n\n{body_lines}\n\n"
-        "_Informational summary — physician review recommended_"
-    )
+    text = f"*{header}*\n\n{body_lines}\n\n_Informational summary — physician review recommended_"
 
     recipients: list[int] = []
     if guardian_row:
@@ -223,9 +222,7 @@ async def _fire_telegram_alert(
     sent_any = False
     for chat_id in set(recipients):
         try:
-            await bot.send_message(
-                chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN
-            )
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
             sent_any = True
         except Exception as exc:
             log.warning("vitals_alert_failed chat=%s: %s", chat_id, exc)
@@ -291,6 +288,7 @@ async def process_summary(
 
 
 # arq background-task wrapper ----------------------------------------------------
+
 
 async def detect_vitals_anomalies(
     ctx: dict[str, Any], senior_id: str, summary_date: str

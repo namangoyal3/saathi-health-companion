@@ -68,6 +68,7 @@ async def test_chat_rejects_missing_field(client: AsyncClient) -> None:
 async def test_tts_returns_empty_when_key_missing(client: AsyncClient) -> None:
     """If ELEVENLABS_API_KEY is unset, /tts returns {audio_b64: ''} gracefully."""
     from app.config import settings
+
     with patch.object(settings, "elevenlabs_api_key", ""):
         resp = await client.post("/tts", json={"message": "hi"})
     assert resp.status_code == 200
@@ -86,7 +87,9 @@ async def test_stt_returns_empty_audio_error_on_empty_upload(client: AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_stt_returns_groq_unavailable_when_transcribe_returns_none(client: AsyncClient) -> None:
+async def test_stt_returns_groq_unavailable_when_transcribe_returns_none(
+    client: AsyncClient,
+) -> None:
     """If Groq is not configured or fails, client sees a specific error code
     rather than a hang or misleading message."""
     with patch("app.api.chat.transcribe", new=AsyncMock(return_value=None)):

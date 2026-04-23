@@ -115,9 +115,7 @@ def classify_thresholds(
     if summary.avg_spo2_pct is not None:
         sev, thr = _spo2_severity(summary.avg_spo2_pct)
         if sev:
-            found.append(
-                VitalsAnomaly("avg_spo2_pct", sev, float(summary.avg_spo2_pct), thr, "")
-            )
+            found.append(VitalsAnomaly("avg_spo2_pct", sev, float(summary.avg_spo2_pct), thr, ""))
 
     if summary.steps is not None and summary.steps < 2000:
         found.append(VitalsAnomaly("steps", "MEDIUM", float(summary.steps), 2000.0, ""))
@@ -125,23 +123,17 @@ def classify_thresholds(
     if summary.sleep_minutes is not None:
         sev, thr = _sleep_severity(summary.sleep_minutes)
         if sev:
-            found.append(
-                VitalsAnomaly("sleep_minutes", sev, float(summary.sleep_minutes), thr, "")
-            )
+            found.append(VitalsAnomaly("sleep_minutes", sev, float(summary.sleep_minutes), thr, ""))
 
     if summary.hrv_rmssd is not None:
         sev, thr = _hrv_severity(summary.hrv_rmssd)
         if sev:
-            found.append(
-                VitalsAnomaly("hrv_rmssd", sev, float(summary.hrv_rmssd), thr, "")
-            )
+            found.append(VitalsAnomaly("hrv_rmssd", sev, float(summary.hrv_rmssd), thr, ""))
 
     if summary.stress_score is not None:
         sev, thr = _stress_severity(summary.stress_score)
         if sev:
-            found.append(
-                VitalsAnomaly("stress_score", sev, float(summary.stress_score), thr, "")
-            )
+            found.append(VitalsAnomaly("stress_score", sev, float(summary.stress_score), thr, ""))
 
     if (
         summary.avg_skin_temp_c is not None
@@ -176,7 +168,9 @@ _NARRATIVE_TEMPLATES: dict[str, str] = {
 
 
 def _template_narrative(a: VitalsAnomaly) -> str:
-    tmpl = _NARRATIVE_TEMPLATES.get(a.marker, "{marker} reading {value} crossed threshold {threshold}.")
+    tmpl = _NARRATIVE_TEMPLATES.get(
+        a.marker, "{marker} reading {value} crossed threshold {threshold}."
+    )
     return tmpl.format(marker=a.marker, value=a.value, threshold=a.threshold)
 
 
@@ -237,9 +231,7 @@ async def _llm_narratives(anomalies: list[VitalsAnomaly], date: str) -> dict[str
     try:
         from app.llm.nvidia import nvidia_chat
 
-        raw = await nvidia_chat(
-            system=_LLM_SYSTEM, user=payload, max_tokens=600, temperature=0.2
-        )
+        raw = await nvidia_chat(system=_LLM_SYSTEM, user=payload, max_tokens=600, temperature=0.2)
         parsed = _parse_narrative_json(raw)
         if parsed:
             return parsed

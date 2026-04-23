@@ -62,7 +62,9 @@ def _put_r2_cache(r2_key: str, wav_bytes: bytes) -> None:
             aws_access_key_id=settings.r2_access_key_id,
             aws_secret_access_key=settings.r2_secret_access_key,
         )
-        s3.put_object(Bucket=settings.r2_bucket, Key=r2_key, Body=wav_bytes, ContentType="audio/wav")
+        s3.put_object(
+            Bucket=settings.r2_bucket, Key=r2_key, Body=wav_bytes, ContentType="audio/wav"
+        )
     except Exception as exc:
         log.warning("tts_r2_cache_write_failed key=%s err=%s", r2_key, exc)
 

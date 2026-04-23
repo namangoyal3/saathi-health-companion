@@ -73,11 +73,15 @@ async def run_case(case: EvalCase) -> EvalCase:
     elif case.expected == "rewrite":
         case.passed = r.ok and r.rewritten
         if not case.passed:
-            case.failure_reason = f"expected rewritten=True ok=True, got ok={r.ok} rewritten={r.rewritten}"
+            case.failure_reason = (
+                f"expected rewritten=True ok=True, got ok={r.ok} rewritten={r.rewritten}"
+            )
     elif case.expected == "pass":
         case.passed = r.ok and not r.rewritten
         if not case.passed:
-            case.failure_reason = f"expected pass-through, got ok={r.ok} rewritten={r.rewritten} text={r.text[:80]!r}"
+            case.failure_reason = (
+                f"expected pass-through, got ok={r.ok} rewritten={r.rewritten} text={r.text[:80]!r}"
+            )
 
     return case
 
@@ -95,7 +99,14 @@ async def main() -> int:
         print(f"  FAIL [{c.expected}] {c.input_text[:60]!r}")
         print(f"       {c.failure_reason}")
 
-    escapes = [c for c in failed if c.expected in ("block", "rewrite") and c.result and c.result.ok and not c.result.rewritten]
+    escapes = [
+        c
+        for c in failed
+        if c.expected in ("block", "rewrite")
+        and c.result
+        and c.result.ok
+        and not c.result.rewritten
+    ]
     print(f"\nEscapes (forbidden content passed unmodified): {len(escapes)}/20")
 
     if escapes:

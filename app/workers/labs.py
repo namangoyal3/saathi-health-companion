@@ -50,9 +50,7 @@ async def process_lab_pdf(
 
         if r2_key:
             s3 = _r2_client()
-            resp = await asyncio.to_thread(
-                s3.get_object, Bucket=settings.r2_bucket, Key=r2_key
-            )
+            resp = await asyncio.to_thread(s3.get_object, Bucket=settings.r2_bucket, Key=r2_key)
             pdf_bytes = resp["Body"].read()
         elif local_path:
             pdf_bytes = Path(local_path).read_bytes()

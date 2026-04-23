@@ -82,10 +82,7 @@ async def _recent_vitals_for_lakshmi() -> str:
 
     if not rows:
         return ""
-    lines = [
-        f"- {r['summary_date']} · {r['severity']} · {r['narrative']}"
-        for r in rows
-    ]
+    lines = [f"- {r['summary_date']} · {r['severity']} · {r['narrative']}" for r in rows]
     return (
         "\nRECENT SMARTWATCH FLAGS (from Galaxy Watch, last 5 most recent):\n"
         + "\n".join(lines)

@@ -46,9 +46,7 @@ def _biomarkers_to_prompt(rows: list[BiomarkerRow]) -> str:
     return "\n".join(lines)
 
 
-async def handle_lab_document(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+async def handle_lab_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle PDF uploads — assume they are lab reports for now."""
     if not update.message or not update.message.document:
         return
@@ -71,9 +69,7 @@ async def handle_lab_document(
         tg_file = await context.bot.get_file(doc.file_id)
     except Exception as exc:
         log.warning("lab_pdf_fetch_failed err=%s", exc)
-        await update.message.reply_text(
-            "Sorry, couldn't download the file. Please try again."
-        )
+        await update.message.reply_text("Sorry, couldn't download the file. Please try again.")
         return
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
@@ -99,9 +95,7 @@ async def handle_lab_document(
 
         prompt = _biomarkers_to_prompt(rows)
         try:
-            narrative = await llm_chat(
-                system=_NARRATIVE_SYSTEM, user=prompt, max_tokens=180
-            )
+            narrative = await llm_chat(system=_NARRATIVE_SYSTEM, user=prompt, max_tokens=180)
         except Exception as exc:
             log.error("lab_narrative_failed err=%s", exc)
             flagged = [r for r in rows if r.flag in ("low", "high")]
@@ -117,19 +111,14 @@ async def handle_lab_document(
                 )
 
         header = f"📋 Lab report ({len(rows)} readings)"
-        await update.message.reply_text(
-            f"*{header}*\n\n{narrative}", parse_mode=ParseMode.MARKDOWN
-        )
+        await update.message.reply_text(f"*{header}*\n\n{narrative}", parse_mode=ParseMode.MARKDOWN)
 
         family_chat_id = (profile or {}).get("family_chat_id")
         if family_chat_id:
             name = str((profile or {}).get("name") or "your loved one")
             flagged = [r for r in rows if r.flag in ("low", "high")]
             flagged_lines = (
-                "\n".join(
-                    f"• {r.biomarker}: {r.value} {r.unit} ({r.flag})"
-                    for r in flagged[:10]
-                )
+                "\n".join(f"• {r.biomarker}: {r.value} {r.unit} ({r.flag})" for r in flagged[:10])
                 or "All biomarkers within normal range."
             )
             try:
@@ -146,5 +135,6 @@ async def handle_lab_document(
                 log.warning("lab_forward_guardian_failed err=%s", exc)
     finally:
         import contextlib
+
         with contextlib.suppress(Exception):
             tmp_path.unlink()

@@ -20,17 +20,15 @@ import asyncpg
 
 
 async def main(to: str, language: str, timeout_seconds: int = 120) -> int:
-    from app.ivr.exotel import place_outbound
     from app.config import settings
+    from app.ivr.exotel import place_outbound
 
     # Pick a real senior_id from DB, fall back to a test UUID
     conn: asyncpg.Connection = await asyncpg.connect(
         dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
     )
     try:
-        row = await conn.fetchrow(
-            "SELECT id FROM app_user WHERE role='senior' LIMIT 1"
-        )
+        row = await conn.fetchrow("SELECT id FROM app_user WHERE role='senior' LIMIT 1")
         senior_id = uuid.UUID(str(row["id"])) if row else uuid.uuid4()
 
         print(f"Placing IVR Flow A call to {to!r} (lang={language}, senior={senior_id})")

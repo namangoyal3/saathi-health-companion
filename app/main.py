@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-# Patch asyncpg for Supabase pooler compatibility before anything else imports it.
-import app.db.pg  # noqa: F401  — side-effect import, must stay at top
-
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -17,6 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Update
 
+# Patch asyncpg for Supabase pooler compatibility before anything else imports it.
+import app.db.pg
 from app.api.admin import router as admin_router
 from app.api.chat import router as chat_router
 from app.api.ivr import router as ivr_router
