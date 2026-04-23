@@ -20,6 +20,7 @@ from app.bot.callbacks import callback_handlers
 from app.bot.onboarding import build_conversation_handler
 from app.bot.scheduler import unschedule_chat
 from app.bot.strings import get_string
+from app.bot.voice_agent import handle_ai_message, handle_voice_message
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ def build_application(token: str) -> Application:  # type: ignore[type-arg]
     app.add_handler(CommandHandler("status", status_cmd))
     if os.getenv("DEBUG", "false").lower() == "true":
         app.add_handler(CommandHandler("reset", reset_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_text))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_message))
 
     return app
