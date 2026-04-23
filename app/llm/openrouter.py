@@ -10,6 +10,14 @@ from app.config import settings
 
 log = logging.getLogger(__name__)
 
+# Tried in order; first success wins. openrouter/free auto-routes to whatever
+# provider is available, making it the most resilient primary choice.
+_FALLBACK_MODELS = [
+    "openrouter/free",
+    "liquid/lfm-2.5-1.2b-instruct:free",
+    "openai/gpt-oss-20b:free",
+]
+
 
 async def openrouter_chat(
     *,
@@ -18,36 +26,55 @@ async def openrouter_chat(
     max_tokens: int = 512,
     temperature: float = 0.2,
 ) -> str:
-    """Call OpenRouter chat completions. Returns the assistant message text."""
+    """Call OpenRouter chat completions with automatic model fallback."""
     key = settings.openrouter_api_key
     if not key or key.startswith("change-me"):
         raise ValueError("OPENROUTER_API_KEY not configured")
 
-    payload = {
-        "model": settings.openrouter_model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://saath.health",
+        "X-Title": "Saath Health Companion",
     }
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{settings.openrouter_base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://saath.health",
-                "X-Title": "Saath Health Companion",
-            },
-            json=payload,
-        )
+    models = [settings.openrouter_model] + [
+        m for m in _FALLBACK_MODELS if m != settings.openrouter_model
+    ]
 
-    if resp.status_code != 200:
-        log.error("openrouter_error status=%d body=%s", resp.status_code, resp.text[:200])
-        resp.raise_for_status()
+    last_err: Exception = RuntimeError("no models tried")
+    for model in models:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.post(
+                    f"{settings.openrouter_base_url}/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user},
+                        ],
+                        "max_tokens": max_tokens,
+                        "temperature": temperature,
+                    },
+                )
 
-    data = resp.json()
-    return str(data["choices"][0]["message"]["content"])
+            if resp.status_code == 200:
+                data = resp.json()
+                text = str(data["choices"][0]["message"]["content"]).strip()
+                if text:
+                    if model != settings.openrouter_model:
+                        log.info("openrouter_fallback used=%s", model)
+                    return text
+
+            log.warning("openrouter_skip model=%s status=%d", model, resp.status_code)
+            last_err = httpx.HTTPStatusError(
+                f"HTTP {resp.status_code}", request=resp.request, response=resp
+            )
+
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            log.warning("openrouter_timeout model=%s err=%s", model, exc)
+            last_err = exc
+
+    raise last_err

@@ -63,7 +63,7 @@ class Settings(BaseSettings):
 
     # OpenRouter (reliable OpenAI-compatible gateway)
     openrouter_api_key: str = ""
-    openrouter_model: str = "inclusionai/ling-2.6-flash:free"
+    openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # ElevenLabs (web chat voice)
