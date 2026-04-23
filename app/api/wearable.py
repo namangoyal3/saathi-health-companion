@@ -37,7 +37,10 @@ class WearableDailySummary(BaseModel):
 
 def _verify_hmac(body: bytes, signature: str) -> bool:
     if not settings.wearable_hmac_secret or settings.wearable_hmac_secret.startswith("change-me"):
-        log.warning("wearable_hmac_secret not configured — accepting webhook without verification")
+        log.error(
+            "wearable_hmac_secret not configured — accepting webhook UNSIGNED. "
+            "Set WEARABLE_HMAC_SECRET before deploying to prod."
+        )
         return True
     expected = hmac.new(
         settings.wearable_hmac_secret.encode(),
@@ -65,7 +68,13 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
     try:
         payload = WearableDailySummary.model_validate_json(body)
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        # exc.errors() may embed the raw `bytes` body in the error context,
+        # which Starlette cannot JSON-serialize → 500. Strip non-primitives.
+        safe = [
+            {k: v for k, v in e.items() if k not in ("input", "ctx")}
+            for e in exc.errors()
+        ]
+        raise HTTPException(status_code=422, detail=safe) from exc
 
     try:
         datetime.date.fromisoformat(payload.date)
