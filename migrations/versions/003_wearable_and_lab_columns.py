@@ -5,46 +5,48 @@ Revises: 002
 Create Date: 2026-04-23
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import UUID
 
 revision: str = "003"
-down_revision: Union[str, None] = "002"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "002"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Wearable daily summary table
-    op.create_table(
-        "wearable_daily_summary",
-        sa.Column("senior_id", UUID(as_uuid=True), sa.ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("date", sa.Date, nullable=False),
-        sa.Column("steps", sa.Integer, nullable=False, server_default="0"),
-        sa.Column("avg_heart_rate", sa.Integer),
-        sa.Column("sleep_minutes", sa.Integer),
-        sa.Column("sleep_efficiency_pct", sa.Integer),
-        sa.Column("sleep_score", sa.Integer),
-        sa.Column("avg_spo2_pct", sa.Integer),
-        sa.Column("avg_skin_temp_c", sa.Numeric(5, 2)),
-        sa.Column("hrv_rmssd", sa.Integer),
-        sa.Column("stress_score", sa.Integer),
-        sa.Column("exercise_minutes", sa.Integer),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.PrimaryKeyConstraint("senior_id", "date"),
-    )
+    # Wearable daily summary table — idempotent
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS wearable_daily_summary (
+            senior_id UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+            date DATE NOT NULL,
+            steps INTEGER NOT NULL DEFAULT 0,
+            avg_heart_rate INTEGER,
+            sleep_minutes INTEGER,
+            sleep_efficiency_pct INTEGER,
+            sleep_score INTEGER,
+            avg_spo2_pct INTEGER,
+            avg_skin_temp_c NUMERIC(5,2),
+            hrv_rmssd INTEGER,
+            stress_score INTEGER,
+            exercise_minutes INTEGER,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (senior_id, date)
+        )
+    """)
 
-    # Add missing columns to lab_panel (status, r2_key, filename, collection_date, lab_chain, error)
-    op.add_column("lab_panel", sa.Column("status", sa.String(30), nullable=False, server_default="pending"))
-    op.add_column("lab_panel", sa.Column("r2_key", sa.Text))
-    op.add_column("lab_panel", sa.Column("filename", sa.Text))
-    op.add_column("lab_panel", sa.Column("collection_date", sa.Date))
-    op.add_column("lab_panel", sa.Column("lab_chain", sa.String(50)))
-    op.add_column("lab_panel", sa.Column("error", sa.Text))
+    # Add missing columns to lab_panel — each uses IF NOT EXISTS to be idempotent
+    for col_ddl in [
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'pending'",
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS r2_key TEXT",
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS filename TEXT",
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS collection_date DATE",
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS lab_chain VARCHAR(50)",
+        "ALTER TABLE lab_panel ADD COLUMN IF NOT EXISTS error TEXT",
+    ]:
+        op.execute(col_ddl)
 
 
 def downgrade() -> None:

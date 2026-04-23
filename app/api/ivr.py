@@ -28,7 +28,7 @@ router = APIRouter(prefix="/ivr", tags=["ivr"])
 
 def _verify_exotel_hmac(body: bytes, signature: str) -> bool:
     """HMAC-SHA256 with the pre-shared webhook secret."""
-    if not settings.exotel_webhook_secret:
+    if not settings.exotel_webhook_secret or settings.exotel_webhook_secret.startswith("change-me"):
         return True  # skip in dev when secret not configured
     expected = hmac.new(
         settings.exotel_webhook_secret.encode(),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import hmac
 import uuid
@@ -10,7 +11,7 @@ from typing import Any
 import asyncpg
 import structlog
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.config import settings
 
@@ -61,7 +62,15 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
     if not _verify_hmac(body, sig):
         raise HTTPException(status_code=401, detail="invalid signature")
 
-    payload = WearableDailySummary.model_validate_json(body)
+    try:
+        payload = WearableDailySummary.model_validate_json(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    try:
+        datetime.date.fromisoformat(payload.date)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"invalid date format: {payload.date!r}") from exc
 
     conn: asyncpg.Connection = await asyncpg.connect(
         dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
@@ -86,7 +95,7 @@ async def samsung_webhook(request: Request) -> dict[str, Any]:
                  exercise_minutes = EXCLUDED.exercise_minutes,
                  updated_at = NOW()""",
             payload.senior_id,
-            payload.date,
+            datetime.date.fromisoformat(payload.date),
             payload.steps,
             payload.avg_heart_rate,
             payload.sleep_minutes,
