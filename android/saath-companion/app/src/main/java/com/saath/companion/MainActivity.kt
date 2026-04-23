@@ -2,12 +2,17 @@ package com.saath.companion
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.*
+import androidx.health.connect.client.PermissionController
 import androidx.work.*
+import com.saath.companion.data.HealthConnectAvailability
+import com.saath.companion.data.HealthConnectAvailabilityChecker
 import com.saath.companion.data.SyncWorker
-import com.saath.companion.domain.SamsungHealthPermissions
+import com.saath.companion.domain.SaathHealthPermissions
 import com.saath.companion.ui.onboarding.PairScreen
 import com.saath.companion.ui.onboarding.PermissionScreen
 import com.saath.companion.ui.onboarding.WelcomeScreen
@@ -23,19 +28,41 @@ private const val KEY_BACKEND_URL = "backend_url"
 private const val KEY_USE_MOCK_READER = "use_mock_reader"
 private const val KEY_STEP = "onboarding_step"
 private const val KEY_LAST_SYNC = "last_sync_epoch"
+private const val KEY_PERMISSIONS_GRANTED = "hc_permissions_granted"
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var requestPermissions:
+        ActivityResultLauncher<Set<String>>
+
+    private val grantedState = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        grantedState.value = prefs.getBoolean(KEY_PERMISSIONS_GRANTED, false)
+
+        // Health Connect permission launcher — must be registered BEFORE
+        // onStart() per ActivityResult API contract.
+        requestPermissions = registerForActivityResult(
+            PermissionController.createRequestPermissionResultContract()
+        ) { granted: Set<String> ->
+            val allGranted = granted.containsAll(SaathHealthPermissions.READ_PERMISSIONS)
+            grantedState.value = allGranted
+            prefs.edit().putBoolean(KEY_PERMISSIONS_GRANTED, allGranted).apply()
+            Log.i(
+                "SaathMain",
+                "hc_permissions granted=${granted.size}/${SaathHealthPermissions.READ_PERMISSIONS.size} all=$allGranted",
+            )
+        }
 
         setContent {
             var step by remember { mutableIntStateOf(prefs.getInt(KEY_STEP, 0)) }
             var seniorId by remember { mutableStateOf(prefs.getString(KEY_SENIOR_ID, "") ?: "") }
             var secret by remember { mutableStateOf(prefs.getString(KEY_SECRET, "") ?: "") }
             var backendUrl by remember { mutableStateOf(prefs.getString(KEY_BACKEND_URL, "") ?: "") }
+            val granted = grantedState.value
             val lastSyncEpoch = prefs.getLong(KEY_LAST_SYNC, 0L)
             val lastSyncedText = if (lastSyncEpoch == 0L) {
                 "Never synced"
@@ -72,17 +99,26 @@ class MainActivity : ComponentActivity() {
 
                 2 -> PermissionScreen(
                     lastSyncedText = lastSyncedText,
-                    onRequestPermissions = { requestSamsungHealthPermissions() },
-                    onDone = { scheduleDailySync(prefs) },
+                    permissionsGranted = granted,
+                    healthConnectStatus = HealthConnectAvailabilityChecker.check(this),
+                    onInstallHealthConnect = {
+                        HealthConnectAvailabilityChecker.launchProviderInstaller(this)
+                    },
+                    onRequestPermissions = {
+                        requestPermissions.launch(SaathHealthPermissions.READ_PERMISSIONS)
+                    },
+                    onDone = {
+                        // Default to mock reader until HC permissions are granted
+                        // — means the app produces a signed POST on first run
+                        // even without a watch paired, so the backend pipeline
+                        // can be verified end-to-end.
+                        val useMock = !grantedState.value
+                        prefs.edit().putBoolean(KEY_USE_MOCK_READER, useMock).apply()
+                        scheduleDailySync(prefs)
+                    },
                 )
             }
         }
-    }
-
-    private fun requestSamsungHealthPermissions() {
-        // Samsung Health SDK permission request — requires HealthDataStore connection.
-        // Full wiring requires the AAR; placeholder logs intent.
-        SamsungHealthPermissions.log()
     }
 
     private fun scheduleDailySync(prefs: android.content.SharedPreferences) {

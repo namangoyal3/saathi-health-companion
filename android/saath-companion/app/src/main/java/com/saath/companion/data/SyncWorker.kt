@@ -38,10 +38,10 @@ class SyncWorker(
             return Result.failure()
         }
 
-        val reader: SamsungHealthReader = if (useMock) {
-            MockSamsungHealthReader()
+        val reader: WearableReader = if (useMock) {
+            MockWearableReader()
         } else {
-            SamsungHealthDataStoreReader(applicationContext)
+            HealthConnectReader(applicationContext)
         }
 
         val target = LocalDate.now().minusDays(1)

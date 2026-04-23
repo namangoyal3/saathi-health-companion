@@ -46,7 +46,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-    // Samsung Health Data SDK — place samsung-health-data-api-1.0.0.aar in app/libs/
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    // Health Connect — the on-device health data broker. Samsung Health writes
+    // into this automatically, so we don't need the Samsung Data SDK AAR.
+    implementation(libs.androidx.health.connect.client)
     debugImplementation(libs.compose.ui.tooling)
 }

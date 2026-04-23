@@ -1,76 +1,121 @@
 # Saath Android Companion App
 
-WorkManager-based daily sync from Samsung Health to the Saath backend.
+WorkManager-based daily sync from **Health Connect** → Saath backend.
+
+Health Connect is the Android system-level health data broker. Samsung Health
+writes Galaxy Watch metrics into it automatically once the user enables
+sharing, so this app reads from a single standard API instead of a Samsung-
+specific SDK. No Samsung Developer Portal, no AAR licence, no partner
+approval.
 
 ## Requirements
 
-- Android 10+ (API 29) with Samsung Health 6.x installed
-- Samsung Galaxy device (Watch data sync requires Galaxy Watch + Health app)
-- Galaxy Store: Samsung Health Data SDK must be approved for the app's package name
+- Android 10+ (API 29)
+- Health Connect — pre-installed on Android 14+; installable from Play Store
+  on Android 13 (the app prompts you if missing)
+- Samsung Health app with the watch paired (or any Health Connect source —
+  Google Fit, Fitbit, etc.)
 
-## Samsung Health SDK Setup
+## Getting the APK
 
-The Samsung Health Data SDK AAR is **not redistributed** in this repo (Samsung
-Developer agreement). Download it manually:
+### Option A — build in CI (recommended)
 
-1. Go to <https://developer.samsung.com/health/android/data/guide/overview.html>
-2. Download `samsung-health-data-api-<version>.aar`
-3. Rename it to `samsung-health-data-api-1.0.0.aar`
-4. Place it at `app/libs/samsung-health-data-api-1.0.0.aar`
+Every push to `main`, `day3/*`, `fix/*`, or `feature/*` branches that touches
+`android/` triggers [.github/workflows/android-apk.yml](../../.github/workflows/android-apk.yml).
+The debug APK lands as a workflow artifact named `saath-companion-debug-apk`.
 
-`build.gradle.kts` picks it up via `fileTree(dir = "libs", include = ["*.aar"])`.
+You can also trigger it manually from the Actions tab → Android APK → Run
+workflow.
 
-## Samsung Health Developer Mode (required for testing on non-certified apps)
-
-Samsung Health enforces package-name allowlisting in production. To test during
-development:
-
-1. Open **Samsung Health** on your Galaxy device.
-2. Tap the **three-dot menu** (top right) → **Settings**.
-3. Scroll to **About Samsung Health** and tap the version number **10 times**
-   rapidly. You will see "Developer mode is now ON."
-4. Go back to Settings → **Developer** → toggle **Data permissions** to allow
-   your app's package (`com.saath.companion`).
-
-Without this, all `HealthDataStore` calls throw `SecurityException`.
-
-## Building
+### Option B — build locally
 
 ```bash
-# From android/saath-companion/
-./gradlew assembleDebug
+cd android/saath-companion
+./gradlew :app:assembleDebug
 ```
 
-Place the AAR in `app/libs/` first or the build will fail with an unresolved
-dependency error.
+The APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Configuration
+If `./gradlew` is missing (the wrapper is not committed), generate it:
+```bash
+gradle wrapper --gradle-version 8.11.1 --distribution-type bin
+```
 
-At first launch the app asks for:
-- **Senior ID** — UUID of the senior in the Saath Postgres `app_user` table
-- **Shared Secret** — `WEARABLE_HMAC_SECRET` from the backend `.env`
-- **Backend URL** — base URL of the Saath API (e.g. `https://saath.example.com`)
+## Install + pair (on phone)
 
-These are stored in private `SharedPreferences`. WorkManager re-reads them on
-every run via `inputData`.
+1. `adb install saath-companion-<sha>.apk` (or sideload via file manager).
+2. Open Samsung Health → Settings → Health Connect → **enable sharing** for
+   steps, heart rate, sleep, SpO₂, skin temperature, HRV, and exercise.
+3. Open Saath → enter **Senior ID** (UUID of the senior in the backend's
+   `app_user` table), **Shared Secret** (matching `WEARABLE_HMAC_SECRET`
+   on the backend), and **Backend URL**.
+4. Tap **Grant Permissions** → Health Connect shows the standard permission
+   screen → tap Allow.
+5. Tap **Finish**. A daily WorkManager job now POSTs a signed summary to
+   `POST /wearable/samsung/webhook`.
 
-## How sync works
+## Testing end-to-end without a watch
 
-`SyncWorker` runs once every 24 hours when the device is online:
+The app falls back to a **mock reader** that posts a scripted
+`dizziness_episode` payload (triggers HIGH/URGENT anomaly detection on the
+backend → Telegram alert). This lets you verify the full pipeline with just
+the APK, before pairing a real watch.
 
-1. Reads the previous day's data from Samsung Health (Steps, HR, Sleep, SpO₂,
-   Skin Temp, HRV, Stress, Exercise) via `HealthDataStore`.
-2. Serialises to `WearableDailySummary` JSON.
-3. Signs the body with HMAC-SHA256 (shared secret) → `X-Saath-Signature` header.
-4. POSTs to `POST /wearable/samsung/webhook`.
+The mock reader is used automatically when Health Connect permissions are not
+granted. To force it once permissions are granted, adb-set
+`saath_prefs.use_mock_reader` to `true` in the app's shared preferences, or
+uninstall + reinstall and skip permission grant during onboarding.
 
-The backend upserts into `wearable_daily_summary` and logs the event.
+## Architecture
+
+```
+Galaxy Watch → Samsung Health app → Health Connect (Android system)
+                                         ↓
+                         androidx.health.connect.client
+                                         ↓
+                         HealthConnectReader  ──┐
+                                                ├─→ SyncWorker
+                         MockWearableReader  ──┘      ↓
+                                                   HMAC-signed
+                                                   HTTP POST
+                                                      ↓
+                                         /wearable/samsung/webhook
+                                                      ↓
+                                          wearable_daily_summary
+                                          + VitalsAnomalyAgent
+                                          + Telegram alert
+```
+
+Files:
+
+| File | Role |
+|---|---|
+| `data/WearableReader.kt` | Vendor-neutral interface + `MockWearableReader` fixture |
+| `data/HealthConnectReader.kt` | Real reader — one `readRecords` per metric |
+| `data/HealthConnectAvailability.kt` | SDK status check + Play Store installer intent |
+| `data/HmacSigner.kt` | HMAC-SHA256 + Base64 matching backend Pydantic |
+| `data/WebhookClient.kt` | OkHttp POST with `X-Saath-Signature` header |
+| `data/SyncWorker.kt` | CoroutineWorker — 24h periodic; retries on 5xx, fails on 4xx |
+| `domain/Permissions.kt` | The set of Health Connect read permissions |
+| `AndroidManifest.xml` | Declared permissions + rationale intent filter |
+
+## Health Connect limitations
+
+Two Samsung-proprietary scores are not exposed via Health Connect and will be
+sent as `null`:
+
+- `stress_score` — no native Health Connect record
+- `sleep_score` — Samsung-proprietary composite; derivable from
+  `SleepStagesRecord` if you need it
+
+Both are nullable on the backend — the anomaly detector doesn't rely on them.
 
 ## Troubleshooting
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `SecurityException: Permission denied` | Developer Mode not enabled or package not allowlisted | See Developer Mode steps above |
-| `ClassNotFoundException: HealthDataService` | AAR missing from `app/libs/` | Download and place AAR |
-| `401 Unauthorized` from backend | Wrong shared secret | Re-check `WEARABLE_HMAC_SECRET` in `.env` |
-| Worker never fires | No network constraint met | Connect to WiFi or disable constraint in `MainActivity` for testing |
+| Problem | Likely cause | Fix |
+|---|---|---|
+| "Health Connect is not available" | Android 13 without the provider app | Tap Install / Update Health Connect (opens Play Store) |
+| Permission screen auto-dismisses | Missing rationale intent filter | Already wired in `AndroidManifest.xml` — confirm the activity-alias is present |
+| 401 from backend | Wrong shared secret | Verify `WEARABLE_HMAC_SECRET` matches backend `.env` |
+| Sync works but records are empty | Samsung Health hasn't synced to Health Connect | Open Samsung Health → Settings → Health Connect → enable sharing |
+| Worker never fires | Battery optimization | Exempt Saath from battery optimization in Android Settings |
