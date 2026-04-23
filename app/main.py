@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Patch asyncpg for Supabase pooler compatibility before anything else imports it.
+import app.db.pg  # noqa: F401  — side-effect import, must stay at top
+
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
