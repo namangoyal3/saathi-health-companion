@@ -42,8 +42,19 @@ jobs:
             gradle wrapper --gradle-version 8.11.1 --distribution-type bin
           fi
 
+      - name: Run JVM unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload unit-test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          retention-days: 7
 
       - name: Rename APK with commit sha
         run: |

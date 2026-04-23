@@ -50,4 +50,8 @@ dependencies {
     // into this automatically, so we don't need the Samsung Data SDK AAR.
     implementation(libs.androidx.health.connect.client)
     debugImplementation(libs.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.kotlinx.serialization.json)
 }

@@ -1,6 +1,6 @@
 package com.saath.companion.data
 
-import android.util.Base64
+import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -11,8 +11,9 @@ import javax.crypto.spec.SecretKeySpec
  *   base64(hmac_sha256(secret_bytes, body_bytes))
  * and compares with `hmac.compare_digest` against the `X-Saath-Signature` header.
  *
- * Android's `Base64.NO_WRAP` avoids line breaks that would mismatch Python's
- * `base64.b64encode(...).decode()` single-line output.
+ * Uses `java.util.Base64` rather than `android.util.Base64` so the signer
+ * is JVM-testable (pure unit tests) without Robolectric, and produces the
+ * same single-line encoding Python emits.
  */
 object HmacSigner {
 
@@ -22,6 +23,6 @@ object HmacSigner {
         val mac = Mac.getInstance(HMAC_ALG)
         mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), HMAC_ALG))
         val digest = mac.doFinal(body)
-        return Base64.encodeToString(digest, Base64.NO_WRAP)
+        return Base64.getEncoder().encodeToString(digest)
     }
 }
