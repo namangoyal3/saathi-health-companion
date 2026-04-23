@@ -146,7 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       </div>
     </div>
     <div class="pills">
-      <span class="pill">🧠 NVIDIA Nemotron</span>
+      <span class="pill">🧠 NVIDIA Llama 3.1</span>
       <span class="pill">🔊 ElevenLabs Voice</span>
       <span class="pill">🎙 Speak or Type</span>
     </div>

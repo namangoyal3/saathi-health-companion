@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     # NVIDIA NIM (OpenAI-compatible, free tier)
     nvidia_api_key: str = ""
-    nvidia_model: str = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+    nvidia_model: str = "meta/llama-3.1-8b-instruct"
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
     # ElevenLabs (web chat voice)
