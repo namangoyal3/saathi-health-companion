@@ -50,7 +50,11 @@ async def chat_page() -> str:
 
 @router.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
-    text = await nvidia_chat(system=_SYSTEM, user=req.message, max_tokens=200)
+    try:
+        text = await nvidia_chat(system=_SYSTEM, user=req.message, max_tokens=200)
+    except Exception as exc:
+        log.error("chat_llm_failed err=%s", exc)
+        text = "I'm having a little trouble right now. Please try again in a moment. 🙏"
     audio_b64 = await _tts(text)
     return ChatResponse(text=text, audio_b64=audio_b64)
 
